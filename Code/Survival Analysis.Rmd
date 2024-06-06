@@ -1,0 +1,183 @@
+---
+title: "Time to event"
+author: "Johannes S. P. Doehl"
+date: "2024-05-29"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-survival-analysis, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r collate-data-for-survival-analysis-from-RawDat}
+# Extract dataframes containing count data
+DatSur <- RawDat[names(RawDat) %like% "KM"]
+
+# Load all the raw tick-removal data from the excel file(s)
+DatSur <- DatSur %>%
+  lapply(., function(qq) { # In cases where multiple variables need to be fused to a single group variable
+    
+    if (qq %>% # In cases where multiple variables need to be fused to a single group variable
+        dplyr::select(any_of(c("Diet", "Route"))) %>%
+        ncol(.) >= 2) {
+      
+      qq %>%
+        mutate(., "Diet_Route" = paste0(qq$Diet, "_", qq$Route)) %>% # Adjusted the factor names
+        mutate(., across(where(is.character), as.factor))
+    } else {
+      
+      qq
+    }
+    
+    }) 
+
+# Set reference to "WN"
+DatSur <- lapply(DatSur, function(ww) {
+  
+  # Set factor references for analysis
+  ww <- within(ww, Diet <- relevel(Diet, ref = "WN"))
+  ww <- within(ww, Diet_Route <- relevel(Diet_Route, ref = "WN_Needle"))
+  
+})
+```
+
+```{r survival-analysis}
+# SURVIVAL ANALYSIS ############################################################
+
+# STANDARD ANALYSIS USING THE PETO-PETO MODIFICATION----------------------------
+
+ResSur <- lapply(DatSur, function(ww) {
+  list("Survival" = survdiff(Surv(Weeks_post_inf, Event) ~ Diet + Route, 
+                             data = ww, 
+                             rho = 0), # NOTE: rho = 0 calls the Mantel-Haenzel's log-rank test
+       
+       "Pairwise" = pairwise_survdiff(Surv(Weeks_post_inf, Event) ~ Diet + Route, 
+                                      data = ww, 
+                                      p.adjust.method = "BH", 
+                                      rho = 0), # NOTE: rho = 0 calls the Mantel-Haenzel's log-rank test
+       
+       "Asterisks" = symnum(pairwise_survdiff(Surv(Weeks_post_inf, Event) ~ Diet + Route, 
+                                      data = ww, 
+                                      p.adjust.method = "BH", 
+                                      rho = 0)$p.value, # NOTE: rho = 0 calls the Mantel-Haenzel's log-rank test
+                            cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                            symbols = c("****", "***", "**", "*", "+", " "),
+                            abbr.colnames = FALSE, na = ""))
+})
+```
+
+```{r cox-proportional-hazard-model}
+# HIERACHICAL ANALYSIS USING THE COX PROPORTIONAL HAZARD MODAL------------------
+
+# Generate time point intervals 
+DatSurInt <- lapply(DatSur, function(xx) {
+  survSplit(Surv(Weeks_post_inf,Event) ~ ., data = xx, cut = c(sort(unique(xx[["Weeks_post_inf"]]))), episode = "timegroup")
+})
+
+# I. Cox proportional hazard model ---------------------------------------------
+# This assess two things, whether guinea pigs represent a level two unit as multiple ticks are placed per guinea pig, and that guinea pigs were repeatedly used in consecutive Diet + Routes
+ResCox <- lapply(DatSurInt, function(yy) {
+  
+  # "Firth's penalized maximum likelihood bias reduction method for Cox regression"
+    
+  # A. Apply Cox proportional hazard model by two independent variables
+  CoxPH2 <- coxphf(Surv(tstart, Weeks_post_inf, Event) ~ Diet + Route,
+                   data = yy)
+  
+    # Hazard Ratio (HR) for Cox proportional hazard for individual predictor
+    HazRat2 <- cbind(CoxPH2[["coefficients"]] %>%
+                       as.data.frame(.) %>%
+                       exp(.) %>%
+                       rename("AHR" = "."),
+                    
+                    exp(confint(CoxPH2)),
+                    
+                    CoxPH2[["prob"]] %>%
+                      as.data.frame(.) %>%
+                      rename("p-value" = ".")
+                    )
+    
+      # Pairwise comparison of all factor levels
+      # Post hoc by estimated marginal means
+      PostHoc2 <- emmeans(CoxPH2, ~ Diet + Route,
+                         adjust = "sidak")
+      
+        # Individual sample effect and Pairwise comparison
+        pairCompCoxPH2 <- list("Estimated marginal means" = PostHoc2,
+          
+          "Each level against overall level" = contrast(PostHoc2,
+                                                        method = "eff",
+                                                        adjust = "sidak"),
+          
+          # Pairwise comparison
+          "Pairwise comparison" = contrast(PostHoc2,
+                                           method = "pairwise",
+                                           adjust = "sidak"),
+          
+          # Letter code for pairwise comparison
+          "Pairwise letter code" = cld(PostHoc2,
+                                       alpha = 0.05,
+                                       Letters = letters,      ### Use lower-case letters for .group
+                                       adjust = "sidak")
+        )
+        
+  # B. Apply Cox proportional hazard model by one combined independent variables
+  CoxPH1 <- coxphf(Surv(tstart, Weeks_post_inf, Event) ~ Diet_Route,
+                   data = yy)
+  
+    # Hazard Ratio (HR) for Cox proportional hazard for individual predictor
+    HazRat1 <- cbind(CoxPH1[["coefficients"]] %>%
+                       as.data.frame(.) %>%
+                       exp(.) %>%
+                       rename("AHR" = "."),
+                    
+                    exp(confint(CoxPH1)),
+                    
+                    CoxPH1[["prob"]] %>%
+                      as.data.frame(.) %>%
+                      rename("p-value" = ".")
+                    )
+    
+      # Pairwise comparison of all factor levels
+      # Post hoc by estimated marginal means
+      PostHoc1 <- emmeans(CoxPH1, ~ Diet_Route,
+                         adjust = "sidak")
+      
+        # Individual sample effect and Pairwise comparison
+        pairCompCoxPH1 <- list("Estimated marginal means" = PostHoc1,
+          
+          "Each level against overall level" = contrast(PostHoc1,
+                                                        method = "eff",
+                                                        adjust = "sidak"),
+          
+          # Pairwise comparison
+          "Pairwise comparison" = contrast(PostHoc1,
+                                           method = "pairwise",
+                                           adjust = "sidak"),
+          
+          # Letter code for pairwise comparison
+          "Pairwise letter code" = cld(PostHoc1,
+                                       alpha = 0.05,
+                                       Letters = letters,      ### Use lower-case letters for .group
+                                       adjust = "sidak")
+        )
+        
+        
+  # COLLATE DATA----------------------------------------------------------------
+        
+  # Compiled output data list
+  list("Firth's Cox regression (2 var)" = CoxPH2,
+       "Hazard Ratio (2 var)"           = HazRat2,
+       "Pairwise comparison (2 var)"    = pairCompCoxPH2,
+       "Firth's Cox regression (1 var)" = CoxPH1,
+       "Hazard Ratio (1 var)"           = HazRat1,
+       "Pairwise comparison (1 var)"    = pairCompCoxPH1
+       )
+})
+```
+

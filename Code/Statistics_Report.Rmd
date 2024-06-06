@@ -1,0 +1,578 @@
+---
+title: "Data wrangling"
+author: "Johannes S. P. Doehl"
+date: "2024-05-22"
+institute: "Vector Molecular Biology Section, Laboratory of Malaria and Vector Research, National Institute of Allergy and Infectious Diseases, National Institutes of Health, Rockville, MD, USA."
+documentclass: article
+linestretch: 1.15
+links-as-notes: true
+papersize: letter
+fontsize: 12pt
+fontfamily: txfonts
+geometry: margin = 2cm
+# pandoc_args : --filter path/to/filter.py
+output: 
+  bookdown::pdf_document2:
+    latex_engine: pdflatex
+    extra_dependencies: ["float"]
+    citation_package: biblatex
+    toc: FALSE
+    number_sections: FALSE
+    fig_caption: yes
+    keep_tex: true
+    includes:
+      in_header: NoFigNum.tex # This removes the automated figure numbering; the file needs to be created separately
+bibliography: 
+  - "Bibliography-BIB.bib" # This is the name of the text file in which citations are embedded
+  - "grateful-refs.bib" # For general package citation
+biblio-syle: nature
+link_citations: true
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r load-libraries, eval = FALSE}
+# Load essential libraries
+library(easypackages) # allows loading and installation of multiple packages in one go
+
+libraries("broom",
+          "car",
+          "conflicted",
+          "coxphf",
+          "data.table",
+          "DHARMa",
+          "emmeans",
+          "epitools",
+          "ggpubr",
+          "glmmTMB",
+          "gt",
+          "Hmisc",
+          "janitor",
+          "LambertW",
+          "magrittr",
+          "MASS",
+          "metan",
+          "multcomp",
+          "lme4",
+          "performance",
+          "rcompanion",
+          "readxl",
+          "rmarkdown",
+          "rstatix",
+          "RVAideMemoire",
+          "survival",
+          "survminer",
+          "tidyverse",
+          "WRS2",
+          "zoo")
+```
+
+```{r main-functions}
+# Reads in Data from all sheets at once + manipulation to extract only relevant data
+read_all <- function(filename, tibble = TRUE) {
+    # If tibble is preferred over data.frame use "tibble = TRUE"
+    sheets <- readxl::excel_sheets(filename)
+    x <- lapply(sheets, function(y) readxl::read_excel(filename, sheet = y))
+    x <- lapply(x, function(y) as.data.frame(y))
+    x <- lapply(x, function(y) y %>% mutate(., across(where(is.character), as.factor)))
+    names(x) <- sheets
+    x
+}
+#-------------------------------------------------------------------------------
+
+# Function for data transformation
+DatTrans <- function(x, depVar, indVar, Drop_Col = NULL, Remove_From = NULL, Term = NULL, Type = NULL) {
+    
+    # prompts selection of number corresponding to transformation
+    aa <- readline("Choose transformation:
+    0 = None
+    Mod skew (sqrt):
+    1 = + ; 2 = -
+    Hi skew (nl):
+    3 = + ; 4 = -
+    Hir skew (log10):
+    5 = + ; 6 = -
+    Ext skew (Inverse):
+    7 = + ; 8 = -
+    Other:
+    9 = Box-Cox") 
+    
+    # In case of negative values in the raw data; the data is translated, thus the smallest values becomes 1
+    if (any(x[c(depVar)] < 0)) { 
+        
+      print("Translated to min = 1")
+      
+      x <- x %>% 
+        mutate(across(all_of(depVar), ~ (.x + 1 - min(.x))))
+        
+    } else {
+      
+      print("Raw Data")
+      
+      x <- x
+      
+    }
+    
+    
+    # Executes the selected transformation
+    if (as.numeric(aa) == 1) {
+      
+      z <- "Square Root Transformed (+)"
+      print(z)
+      
+      y <- x %>%
+        mutate(across(any_of(depVar), ~ sqrt(.x + 1)))
+      
+      
+    } else if (as.numeric(aa) == 2) {
+      
+      z <- "Square Root Transformed (-)"
+      print(z)
+      
+      y <- x %>%
+        mutate(across(any_of(depVar), ~ sqrt(max(.x + 1) - .x)))
+      
+    } else if (as.numeric(aa) == 3) {
+      
+      z <- "Natural Log Transformed (+)"
+      print(z)
+      
+      y <- x %>% 
+        mutate(across(any_of(depVar), ~ log(.x + 1)))
+        
+      
+    } else if (as.numeric(aa) == 4) {
+      
+      z <- "Natural Log Transformed (-)"
+      print(z)
+      
+      y <- x %>% 
+        mutate(across(any_of(depVar), ~ log(max(.x + 1) - .x)))
+        
+      
+    } else if (as.numeric(aa) == 5) {
+      
+      z <- "Log10 Transformed (+)"
+      print(z)
+      
+      y <- x %>% 
+        mutate(across(any_of(depVar), ~ log10(.x + 1)))
+        
+      
+    } else if (as.numeric(aa) == 6) {
+      
+      z <- "Log10 Transformed (-)"
+      print(z)
+      
+      y <- x %>% 
+        mutate(across(any_of(depVar), ~ log10(max(.x + 1) - .x)))
+        
+      
+    } else if (as.numeric(aa) == 7) {
+      
+      z <- "Inverse Transformed (+)"
+      print(z)
+      
+      y <- x %>% 
+        mutate(across(any_of(depVar), ~ (1 / (.x + 1))))
+        
+      
+    } else if (as.numeric(aa) == 8) {
+      
+      z <- "Inverse Transformed (-)"
+      print(z)
+      
+      y <- x %>% 
+        mutate(across(any_of(depVar), ~ (1 / (max(.x + 1) - .x))))
+        
+      
+    } else if (as.numeric(aa) == 9) {
+      
+      z <- "Box-Cox power Transformed"
+      print(z)
+      
+      if (is.null(Drop_Col)) { # In case some rows need to be removed
+        
+        y <- x %>%
+        mutate(across(any_of(depVar), ~ (.x + 1)))
+        
+      } else if (Drop_Col == "Yes") {
+        
+        y <- x %>% # Splitting "Measure" variable back into two columns according to "Measure_Type"
+        .[!.[,Remove_From] %in% Term,] %>%
+        mutate(across(any_of(depVar), ~ (.x + 1)))
+        
+      } else {
+        
+        print("error")
+        
+        stop("Please, define `Drop_Col` with NULL or `Yes`")
+      }
+      
+      indVar <- indVar[indVar %in% names(y)] # In case, column names do not exist, these are dropped
+      
+      Mod <- lm(formula = as.formula(paste0("cbind(", paste(depVar, collapse = ", "), ") ~ ", paste(indVar, collapse = " * "))), data = y) # Run the linear model
+      
+      bc <- powerTransform(Mod)$lambda %>%
+        setNames(depVar) # Do the Box-Cox power Transformation
+    
+      y <- x %>%
+        mutate(across(any_of(depVar), ~ (.x + 1))) %>% # Modify outcome variables with respective lambda term
+        mutate(across(any_of(depVar), ~ bcPower(.x, bc[cur_column()])))  
+      
+      
+      } else if (as.numeric(aa) == 0) {
+      
+      z <- "untransformed"
+      print(z)
+      
+      y <- x
+      
+      } else {
+      
+        print("Wrong input")
+        stop()
+      }
+    
+    output <- list("Data" = y, "Transformation" = z)
+    
+    output
+}
+#-------------------------------------------------------------------------------
+
+# Adjusts for Skewness and Kurtosis by Lambert W, if needed 
+ModSkeKur <- function(x, depVar, indVar, Type = "h") {
+  
+  # prompts selection of number corresponding to transformation
+    aa <- readline("Choose transformation:
+                   0 = None
+                   1 = MLE_LambertW")
+      
+  x <- x %>% 
+        mutate(., x %>%
+                 dplyr::select(any_of(indVar)) %>%
+                 as.data.frame(.) %>%
+                 mutate(., across(where(is.factor), as.character)) %>% 
+                 unite(., "IDs", sep = "_", remove = TRUE) %>% 
+                 mutate(., across("IDs", as.factor)))
+  
+  if (as.numeric(aa) == 1) {
+    
+    w <- "Lambert W transformed"
+    print(w)
+    
+    # Correct for kurtosis by Lambert W      
+    z <- sapply(depVar, function(a) {
+      
+      sapply(levels(x$IDs), function(y) {
+    
+        mod.Lh <- get_input(
+          MLE_LambertW(x[x$IDs %in% y, a], 
+                               distname = "normal", 
+                               type = Type)
+          ) %>%
+          enframe(.) %>%
+          .[,2] 
+        
+      }, simplify = FALSE) %>%
+        bind_rows(.) %>%
+        as.data.frame(.)
+      
+    }, simplify = FALSE) %>%
+      bind_cols(.) %>%
+      as.data.frame(.) %>%
+      set_colnames(depVar)
+    
+    # Replace with adjusted data
+    y <- x %>% 
+      arrange(IDs) %>%
+      sjmisc::replace_columns(., z) %>%
+      .[, !names(.) %in% "IDs"]
+    
+  } else if (as.numeric(aa) == 0) {
+    
+    w <- "untransformed"
+    print(w)
+    
+    y <- x %>%
+      .[, !names(.) %in% "IDs"]
+    
+  } else {
+      
+    print("Wrong input for cc")
+    stop()
+  }
+  
+  output <- list("Data" = y, "Transformation" = w)
+    
+  output
+}
+#-------------------------------------------------------------------------------
+```
+
+```{r dir-info}
+BibPath <- "C:/Users/doehljs/Documents/GitHub/Mal-nourished-study/"
+```
+
+```{r loading-data}
+# LOADING DATA #################################################################
+
+# Get name(s) of excel files in the directory
+FilNam <- list.files(path = paste0(BibPath, "Raw Data/"), pattern = "\\.xlsx$")
+
+# Read in data from excel file
+RawDat <- read_all(paste0(BibPath, "Raw Data/", FilNam))
+```
+
+~~~{=comment}
+# Script Execution for data analysis
+
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r chi-square-analysis-call, child = "Chi-square Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r count-data-analysis-call, child = "Count Data Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r binomial-logistic-regression-call, child = "Logistic regression.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r fold-change-analysis-call, child = "Fold Change Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r survival-analysis-call, child = "Survival Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r two-way-analysis-call, child = "Two-way Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r three-way-analysis-call, child = "Three-way Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r two-way-mixed-analysis-call, child = "Two-way Mixed Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the ordered selection for the prompted option in the code chunk: 
+~~~
+```{r three-way-mixed-analysis-call, child = "Three-way Mixed Analysis.Rmd"}
+```
+
+~~~{=comment}
+This is the start of the rendered document.
+~~~
+
+# Summary
+
+~~~{=comment}
+Quick summary of the statistics report
+~~~
+```{r main-body, child = "Main_Body.Rmd"}
+```
+
+# Main Body
+
+~~~{=comment}
+General statements about procedure
+~~~
+```{r main-body, child = "Main_Body.Rmd"}
+```
+
+
+## Figure 1
+
+### Panel b and c
+
+~~~{=comment}
+~~~
+```{r figure-1-b-c, child = "Figure_1a_c.Rmd", eval = FALSE}
+```
+
+
+### Panel e and f
+
+~~~{=comment}
+~~~
+```{r figure-1-e-f, child = "Figure_1e_f.Rmd", eval = FALSE}
+```
+
+
+### Panel h
+
+~~~{=comment}
+~~~
+```{r figure-1-h, child = "Figure_1h.Rmd", eval = FALSE}
+```
+
+
+## Figure 2
+
+### Panel a
+
+~~~{=comment}
+~~~
+```{r figure-2-a, child = "Figure_2a.Rmd", eval = FALSE}
+```
+
+
+### Panel b
+
+~~~{=comment}
+~~~
+```{r figure-2-b, child = "Figure_2b.Rmd", eval = FALSE}
+```
+
+
+### Panel c
+
+~~~{=comment}
+~~~
+```{r figure-2-c, child = "Figure_2c.Rmd", eval = FALSE}
+```
+
+
+### Panel d
+
+~~~{=comment}
+~~~
+```{r figure-2-d, child = "Figure_2d.Rmd", eval = FALSE}
+```
+
+
+### Panel e
+
+~~~{=comment}
+~~~
+```{r figure-2-e, child = "Figure_2e.Rmd", eval = FALSE}
+```
+
+
+### Panel f
+
+~~~{=comment}
+~~~
+```{r figure-2-f, child = "Figure_2f.Rmd", eval = FALSE}
+```
+
+
+## Figure 3
+
+### Panel a
+
+~~~{=comment}
+~~~
+```{r figure-3-a, child = "Figure_3a.Rmd", eval = FALSE}
+```
+
+
+### Panel b
+
+~~~{=comment}
+~~~
+```{r figure-3-b, child = "Figure_3b.Rmd", eval = FALSE}
+```
+
+
+### Panel c
+
+~~~{=comment}
+~~~
+```{r figure-3-c, child = "Figure_3c.Rmd", eval = FALSE}
+```
+
+
+### Panel d
+
+~~~{=comment}
+~~~
+```{r figure-3-d, child = "Figure_3d.Rmd", eval = FALSE}
+```
+
+
+### Panel e
+
+~~~{=comment}
+~~~
+```{r figure-3-e, child = "Figure_3e.Rmd", eval = FALSE}
+```
+
+
+## Figure 4
+
+### Panel a
+
+~~~{=comment}
+~~~
+```{r figure-4-a, child = "Figure_4a.Rmd", eval = FALSE}
+```
+
+
+### Panel b
+
+~~~{=comment}
+~~~
+```{r figure-4-b, child = "Figure_4b.Rmd", eval = FALSE}
+```
+
+
+### Panel c
+
+~~~{=comment}
+~~~
+```{r figure-4-c, child = "Figure_4c.Rmd", eval = FALSE}
+```
+
+
+### Panel d and e
+
+~~~{=comment}
+~~~
+```{r figure-4-d-e, child = "Figure_4d_e.Rmd", eval = FALSE}
+```
+
+
+## Supplementary Figure 1
+
+### Panel a
+
+~~~{=comment}
+~~~
+```{r figure-S1-a, child = "Figure_S1a.Rmd", eval = FALSE}
+```
+
+
+### Panel c
+
+~~~{=comment}
+~~~
+```{r figure-S1-c, child = "Figure_S1c.Rmd", eval = FALSE}
+```

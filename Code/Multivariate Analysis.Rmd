@@ -1,0 +1,702 @@
+---
+title: "Mutlivariate analysis"
+author: "Johannes S. P. Doehl"
+date: "2024-05-29"
+output: pdf_document
+---
+
+```{r setup-multivariate-analysis, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r collate-data-for-multivariate-analysis-from-RawDat}
+DatMV <- RawDat[names(RawDat) %like% "MV"]
+
+# Set reference to "WN"
+DatMV <- lapply(DatMV, function(ww) {
+
+  # Set factor references for analysis
+  ww <- within(ww, Diet <- relevel(Diet, ref = "WN"))
+
+})
+
+# # Set reference to "WN"
+# DatMV <- lapply(DatMV, function(ww) {
+#   
+#   ww <- ww %>%
+#     pivot_longer(data = ., 
+#                  cols = c(colnames(ww[!colnames(ww) %in% c("Mouse", "Diet", "Route")])), 
+#                  names_to = "Target", 
+#                  values_to = "Counts") %>%
+#     mutate(., across(where(is.character), as.factor))
+#   
+#   # Set factor references for analysis
+#   ww <- within(ww, Diet <- relevel(Diet, ref = "WN"))
+#   
+# })
+# 
+# # Split dataframe containing multiple tissue data into separate dataframes for analysis
+# DatMVSpt <- mapply(function(qq, rr) {
+#   
+#   if (nlevels(qq$Target) > 1) {
+#     
+#     xxx <- split(qq, qq$Target) %>%
+#       
+#       lapply(., function(ww) {
+#         
+#         droplevels(ww)
+#         })
+#     
+#     xxx %>%
+#       purrr::set_names(paste(rr, names(xxx), sep = " - "))
+#     
+#   } else {
+#     
+#     list(qq)
+#   }
+# }, qq = DatMV, rr = names(DatMV), SIMPLIFY = FALSE) %>%
+#   flatten(.)
+```
+
+```{r idiosoma-length-and-width-analysis, include = FALSE}
+# Data analysis by two-way model
+ResMV <- lapply(DatMV, function(xx) {
+  
+  # DATA PREPARATION
+  ExpDat <- xx %>%
+    mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    mutate(., Groups = paste(.$Diet, .$Route, sep = "_"), .after = "Route") %>%
+    mutate(., across(where(is.character), as.factor)) %>%
+    droplevels(.)
+    
+    # Removes parts of the column name that contains "( )"                     
+    if(any(grepl("[(]", colnames(ExpDat)))) {
+      
+      ColNam <- colnames(ExpDat)
+      
+      ExpDat <- ExpDat %>%
+        set_colnames(gsub(" [(].*", "", colnames((ExpDat))))
+      
+    } else {
+      
+      ColNam <- colnames(ExpDat)
+    }
+  
+    # Generate raw data backup
+    ExpDat2 <- ExpDat
+    
+  # DATA VISUALIZATION by box plot
+  DatDis1 <- ggplot(ExpDat %>%
+                      # Rearrange data
+                      pivot_longer(data = ., 
+                                   cols = c(colnames(.[!colnames(.) %in% c("Mouse", "Diet", "Route", "Groups")])),
+                                   names_to = "Target",
+                                   values_to = "Counts") %>%
+                      mutate(., across(where(is.character), as.factor)),
+                    # Plotting the data
+                    aes(x = Diet, y = Counts, fill = Route)) +
+                    geom_boxplot() + 
+                    theme_bw() +
+                    facet_wrap( ~ Target,
+                               scales = "free")
+  
+  
+  # SUMMARY STATISTICS
+  SumStat <- ExpDat %>%
+    # Rearrange data
+    pivot_longer(data = ., 
+                 cols = c(colnames(.[!colnames(.) %in% c("Mouse", "Diet", "Route", "Groups")])),
+                 names_to = "Target",
+                 values_to = "Counts") %>%
+    mutate(., across(where(is.character), as.factor)) %>%
+    group_by(Target, Diet, Route) %>%
+    get_summary_stats("Counts", type = "full")
+
+
+  # ASSUMPTION TESTING ###########################################################
+
+  # 1. NORMALITY ---------------------------------------------------------------
+  
+  # Data normality check and transformation loop
+  for (aa in 1:100) {
+    
+    # 1.1. Normality of groups -------------------------------------------------
+    NormUV <- ExpDat %>% 
+      group_by(Groups) %>%
+      rstatix::shapiro_test(vars = rlang::syms(names(ExpDat[5:ncol(ExpDat)]))) %>%
+      mutate("Outcome" = ifelse(.$p <= 0.05, "sig.", "ns"))
+    
+      # Data visualization: QQ-plot
+      QQplotUV <- ExpDat %>%
+        # Rearrange data
+        pivot_longer(data = ., 
+                     cols = c(colnames(.[!colnames(.) %in% c("Mouse", "Diet", "Route", "Groups")])),
+                     names_to = "Target",
+                     values_to = "Counts") %>%
+        mutate(., across(where(is.character), as.factor)) %>%
+        ggpubr::ggqqplot(., "Counts", ggtheme = theme_bw()) +
+        facet_grid(Target ~ Diet + Route,
+                   scales = "free")
+      
+      
+    # 1.2. Skewness and kurtosis check by group
+    SkeKur <- lapply(list(ExpDat), function(yy) {
+      
+      Skew <- yy %>%
+        group_by(Diet, Route) %>%
+        metan::skew(.)
+      
+        if (any(Skew[, 3:ncol(Skew)] > 1)) {
+  
+          SkewOut <- "right skew"
+          
+        } else if (any(Skew[, 3:ncol(Skew)] < -1)) {
+  
+          SkewOut <- "left skew"
+          
+        } else {
+  
+          SkewOut <- "no skew"
+          
+        }
+      
+        print(Skew)
+        
+        print(SkewOut)
+        
+        
+      Kurt <- yy %>%
+        group_by(Diet, Route) %>%
+        metan::kurt(.)
+        
+        if (any(Kurt$Length_mm > 2 | Kurt$Width_mm > 2)) {
+  
+          KurtOut <- "leptokurtic"
+          
+        } else if (any(Kurt$Length_mm < -2 | Kurt$Width_mm < -2)) {
+  
+          KurtOut <- "platykurtic"
+          
+        } else {
+  
+          KurtOut <- "mesokurtic"
+          
+        }
+      
+        print(KurtOut)
+        
+        print(Kurt)
+    
+      list("Skewness: Result" = SkewOut,
+           "Skewness: Data"   = Skew, 
+           "Kurtosis: Result" = KurtOut,
+           "Kurtosis: Data"   = Kurt)
+      
+    }) %>%
+      purrr::flatten(.)
+    
+    
+    # 1.2. Multivariate normality ------------------------------------------------
+    NormMV <- ExpDat %>%
+      dplyr::select(c(colnames(ExpDat[!colnames(ExpDat) %in% c("Mouse", "Diet", "Route", "Groups")]))) %>%
+      mshapiro_test(.)
+    
+      
+    # 1.3 Normality of model residuals (Needed for univariate ANOVA in post hoc test)
+    # Linear model to gain residuals
+    Mod <- lm(as.formula(paste0("cbind(`", 
+                                paste(c(colnames(ExpDat[!colnames(ExpDat) %in%
+                                                          c("Mouse", "Diet", "Route", "Groups")])),
+                                      collapse = "`, `"), "`) ~ Diet + Route")),
+              data = ExpDat)
+    
+    # Shapiro-Wilks test of residuals
+    NormRes <- residuals(Mod) %>% 
+      as.data.frame(.) %>%
+      shapiro_test(vars = rlang::syms(names(as.data.frame(residuals(Mod))))) %>% # Shapiro-Wilks test of model residuals
+      mutate("Outcome" = ifelse(.$p.value <= 0.05, "sig.", "ns"))
+    
+      # Data visualization: QQ-plot
+      QQplotRes <- residuals(Mod) %>% 
+        as.data.frame(.) %>%
+        pivot_longer(data = ., 
+                     cols = c(colnames(.[!colnames(.) %in% c("Mouse", "Diet", "Route", "Groups")])),
+                     names_to = "Target",
+                     values_to = "Counts") %>%
+        ggqqplot(., "Counts", ggtheme = theme_bw()) +
+        facet_wrap( ~ Target, 
+                    scale = "free")
+  
+    
+  # 2. NO OUTLIER(S)------------------------------------------------------------
+  
+    # 2.1 Univariate outliers
+    OutUV <- lapply(c(colnames(ExpDat[!colnames(ExpDat) %in% c("Mouse", "Diet", "Route", "Groups")])), function(qq) {
+      
+      ExpDat %>% 
+        group_by(Diet, Route) %>%
+        identify_outliers(sym(qq)) %>%
+        .[, c(1:3, (ncol(.)-1):ncol(.))] 
+      }) %>%
+        purrr::set_names(c(colnames(ExpDat[!colnames(ExpDat) %in% c("Mouse", "Diet", "Route", "Groups")]))) %>%
+        bind_rows(., .id = "Proteins")
+      
+      
+    # 2.2 Multivariate outliers
+    OutMV <- ExpDat %>%
+      group_by(Diet, Route) %>%
+      mahalanobis_distance(-id) %>%
+      dplyr::filter(is.outlier == TRUE) %>%
+      as.data.frame()
+  
+  
+  # 3. MULTICOLLINEARITY CHECK -------------------------------------------------
+  
+    MultColTM <- TickMeas %>% # P-value needs to be <0.05
+      cor_test(Length_mm, Width_mm)
+    
+      # Assessment of linear relationship between dependent variables without grouping
+      MultColTMplot <- TickMeas %>%
+        dplyr::select(Length_mm, Width_mm, Time_Groups) %>%
+        rstatix::doo(~ggpairs(.) + theme_bw(), result = "plots")
+    
+    
+  # 4. LINEARITY ASSUMPTION ----------------------------------------------------
+  
+    Res.linTM <- TickMeas %>% # P-value needs to be <0.05
+        dplyr::select(Length_mm, Width_mm, Time_Groups) %>%
+        group_by(Time_Groups) %>%
+        cor_test(Length_mm, Width_mm)
+    
+      # Assessment of linear relationship between dependent variables separated by experimental group
+      Res.linTMplot <- TickMeas %>%
+        dplyr::select(Length_mm, Width_mm, Time_Groups) %>%
+        group_by(Time_Groups) %>%
+        rstatix::doo(~ggpairs(.) + theme_bw(), result = "plots")
+    
+    # If there is no linear relationship between dependent variables, we will lose power but can still run the MANOVA
+  
+    
+  # 5. HOMOGENEITY OF VARIANCES---------------------------------------------------
+  
+    # Testing for homogeneity of variance between the groups of the between-subjects factors for each level of the within-subjects factors
+    EquVarTM <- TickMeas %>%
+      pivot_longer(data = ., cols = c("Length_mm", "Width_mm"), names_to = "Event", values_to = "Counts") %>% 
+      group_by(Event) %>%
+      levene_test(Counts ~ Group * Time_h, data = .)
+  
+      # Visualize data by box plot
+      DatDis <- ggplot(TickMeas %>%
+                           pivot_longer(data = ., cols = c(Length_mm, Width_mm), names_to = "Measure_Type", values_to = "Measure"), 
+                         aes(x = Time_h, y = Measure, fill = Group)) +
+                         geom_boxplot() + 
+                         facet_free(~ Measure_Type)
+
+      print(DatDis)
+
+  # 6. HOMOGENEITY OF COVARIANCES-------------------------------------------------
+  
+    # Test homogeneity of covariance
+    BoxMTM <- box_m(TickMeas[, c("Length_mm", "Width_mm"), drop = FALSE], TickMeas$Time_Groups) # p should be > 0.001; if not use Pillai’s multivariate statistic instead of Wilks’ statistic in MANOVA
+  
+ 
+  # RESULTS OF ASSUMPTION TESTING-----------------------------------------------
+  # Univariate normality
+  if (any(NormUV$p <= 0.05)) { 
+    ResNormUV <- "Univariate: Non-Guassian"
+    print(ResNormUV)
+  } else {
+    ResNormUV <- "Univariate: Guassian"
+    print(ResNormUV)
+  }
+  
+  # Multivariate normality
+  if (any(NormMV$p.value <= 0.05)) { 
+    ResNormMV <- "Multivariate: Normality rejected"
+    print(ResNormMV)
+  } else {
+    ResNormMV <- "Multivariate: Normality holds"
+    print(ResNormMV)
+  }
+  
+  # Normality of residuals
+  if (any(NormResTM$p.value <= 0.05)) {
+      ResNormResTM <- "Residuals: Non-Guassian"
+      print(ResNormResTM)
+    } else {
+      ResNormResTM <- "Residuals: Guassian"
+      print(ResNormResTM)
+    }
+  
+  # Univariate outliers
+  if (dim(OutUVTM)[1] != 0) { 
+    ResOutUVTM <- paste0("Univariate: ",
+      dim(OutUVTM)[1],
+      " ",
+      paste(gsub(".*\\.", "", names(OutUVTM %>%
+                                      dplyr::select(where(~any(.x == TRUE)))))[c(2,1)] %>%
+                                      .[!is.na(.)], collapse = " "), 
+      "(s) found")
+    print(ResOutUVTM)
+  } else {
+    ResOutUVTM <- "Univariate: No outliers"
+    print(ResOutUVTM)
+  }
+  
+  # Multivariate outliers
+  if (dim(OutMVTM)[1] != 0) { 
+    ResOutMVTM <- paste0("Multivariate: ",
+      dim(OutMVTM)[1], " ", 
+      paste(gsub(".*\\.", "", names(OutMVTM %>% 
+                                      dplyr::select(where(~any(.x == TRUE)))))[c(2,1)] %>% 
+                                      .[!is.na(.)], collapse = " "),
+      "(s) found")
+    print(ResOutMVTM)
+  } else {
+    ResOutMVTM <- "Multivariate: No outliers"
+    print(ResOutMVTM)
+  }
+  
+  # Liniearity
+  if (all(Res.linTM$cor < 0.9 & Res.linTM$cor > 0.1 | Res.linTM$cor < -0.1 & Res.linTM$cor > -0.9) != TRUE) {
+    ResRes.linTM <- "Linarity: Outside of reliable range"
+    print(ResRes.linTM)
+  } else {
+    ResRes.linTM <- "Linarity: Inside of reliable range"
+    print(ResRes.linTM)
+  }
+  
+  # Multicollinearity
+  if (MultColTM$p >= 0.05) {
+    ResMultColTM <- "Significant multicollinarity"
+    print(ResMultColTM)
+  } else {
+    ResMultColTM <- "Multicollinarity: Inside of reliable range"
+    print(ResMultColTM)
+  }
+  
+  # Homogeneity of variance
+  if (any(EquVarTM$p <= 0.05)) {
+    ResEquVarTM <- "Heterogenous variance"
+    print(ResEquVarTM)
+  } else {
+    ResEquVarTM <- "Homogeneous variance"
+    print(ResEquVarTM)
+  }
+  
+  # Homogeneity of covariance
+  if (BoxMTM$p.value <= 0.05) {
+    ResEquCoVTM <- "Heterogenous covariance"
+    print(ResEquCoVTM)
+  } else {
+    ResEquCoVTM <- "Homogeneous covariance"
+    print(ResEquCoVTM)
+  }
+  
+  
+  # HYPOTHESIS TESTING #########################################################
+  
+  # 1. Two-way MANOVA ----------------------------------------------------
+      
+  # Without random effect of guinea pigs
+  Res.ManTMwo <- manova(cbind(Length_mm, Width_mm) ~ Group * Time_h, 
+                        data = TickMeas) # Unfed group removed as they did not fed on a guinea pig  
+    # NOTE: The equal variance and co-variance assumption are violated, thus, the MANOVA is becoming less accurate. Lowering the significance threshold for the p-value can compensate for that to some extend. Confirming the results with mixed effect model will help to consolidate test outcomes. Non-parametric approaches for multivariate analyses are still being developed
+      
+    # Post hoc pairwise comparison of nested effects by least square means 
+    res.emmswo <- emmeans(Res.ManTMwo, 
+                          pairwise ~ Group * Time_h, 
+                          adjust = "BH")
+    
+      res.emms.out.wo <- summary(res.emmswo[[2]])[!is.na(summary(res.emmswo[[2]])[,4]),] %>% # Summary of comparisons
+        mutate(., "Sig." = symnum(.$p.value,
+                                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                                  symbols = c("****", "***", "**", "*", "+", " ")))
+  
+  # With random effect of guinea pigs
+  Res.ManTMw <- manova(cbind(Length_mm, Width_mm) ~ Group * Time_h / Cage, 
+                       data = TickMeas)
+  
+    res.emmsw <- emmeans(Res.ManTMw, 
+                         pairwise ~ Cage | Group * Time_h, 
+                         adjust = "BH") 
+    
+      res.emms.out.w <- summary(res.emmsw[[2]])[!is.na(summary(res.emmsw[[2]])[,4]),] %>% # Summary of comparisons with random effect
+        mutate(., "Sig." = symnum(.$p.value,
+                                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                                  symbols = c("****", "***", "**", "*", "+", " ")))
+    
+    ResEmmsLSD <- "Estimated marginal means"
+    print(ResEmmsLSD) 
+    
+  #---------------------------------------------------------------------------
+    
+  # Multivariate mixed effects model in case of violated MANOVA assumptions
+    # lme() function fits a linear mixed-effect model, required for inclusion of random effects 
+    ModTM1 <- nlme::lme(cbind(Length_mm, Width_mm) ~ Group * Time_h, 
+                        random = ~1|Cage,
+                        method = "REML", # model is fitted by maximizing the restricted log-likelihood
+                        data = TickMeas)
+    
+      # ANOVA to assess the significance of the independent variables (p<0.05 means not important)
+      res.memTM <- nlme::anova.lme(ModTM1,
+                                   type = "sequential",
+                                   adjustSigma = FALSE)
+      
+      ResMemLSD <- "Mixed effects model"
+      print(ResMemLSD) 
+      
+      # Post hoc pairwise comparison by least square means (cannot include random effect in lme file)
+      posthocTM <- emmeans(ModTM1,
+                           pairwise ~ Group * Time_h,
+                           adjust = "BH")
+      
+        PhLetter <- cld(posthocTM,
+                        alpha = 0.05,
+                        Letters = letters,      ### Use lower-case letters for .group
+                        adjust = "BH")       ### Sidak-adjusted comparisons
+    
+        ResPHLSD <- "Estimated marginal means"
+        print(ResPHLSD)
+        
+      # Check for the impact of the random effect ("Cage")
+        # gls() function fits a linear model using the generalized least square 
+      ModTM2 <- nlme::gls(cbind(Length_mm, Width_mm) ~ Group * Time_h, 
+                          method = "REML", 
+                          data = TickMeas)
+
+      res.reTM <- anova(ModTM1, ModTM2)
+      
+    
+    # Test model assumptions
+      
+      # 1. Linearity: Only applies to continuous covariates; if only categorical covariates are used, no need to test.
+      
+      # 2. Homogeneity of Variance: plot model & Levene's test of residuals by group.
+      
+      # 3. Normal distribution of residuals: QQplot of residuals, Shapiro-Wilks test, skewness & kurtosis analysis.
+      
+      # 4. Normality of random effect: Get the estimate of random effect (here, random intercepts), and check them as check the residual. But it is not efficient because you just have 7 random intercepts.
+      
+      # 5. Another assumption is the independent between subjects: no test 
+      
+      #-------------------------------------------------------------------------
+      
+      # 2. Homogeneity of Variance
+      
+        # Assessment of homoskedasticity among residuals by plot
+        SkedAss <- plot(ModTM1)
+      
+        # Levene's test of residuals by group
+        ModHomVar <- TickMeas %>%
+          mutate(., "Residual" = residuals(ModTM1)) %>%
+          levene_test(Residual ~ Time_Groups)
+        
+        if (ModHomVar$p < 0.05) {
+          
+          HomVarMod <- "Heterogeneous Variance"
+          print(HomVarMod)
+          
+        } else {
+          
+          HomVarMod <- "Homogeneous Variance"
+          print(HomVarMod)
+          
+        }
+      
+      
+      # 3. Normal distribution of residuals
+      
+        # Shapiro-Wilks test
+        NormResTM2 <- shapiro_test(residuals(ModTM1)) # Check normal distribution of residuals
+      
+        if (NormResTM2$p.value < 0.05) {
+          
+          NormResMod <- "Residuals of ModTM1: Non-Guassian"
+          print(NormResMod)
+          
+        } else {
+          
+          NormResMod <- "Residuals of ModTM1: Guassian"
+          print(NormResMod)
+          
+        }
+        
+          # QQ-plot of model residuals  
+          QQResMod <- ggqqplot(residuals(ModTM1),
+                               ggtheme = theme_bw())
+      
+          # Check for data skewness and kurtosis to verify Gaussian distribution of residuals
+          
+            # Assess skewness of model residuals
+            Skew <- moments::skewness(residuals(ModTM1))
+          
+            if (Skew > 1) {
+              
+              SkewOut <- "Residuals of ModTM1: right skew"
+              print(SkewOut)
+              
+            } else if (Skew < -1) {
+              
+              SkewOut <- "Residuals of ModTM1: left skew"
+              print(SkewOut)
+              
+            } else {
+              
+              SkewOut <- "Residuals of ModTM1: no skew"
+              print(SkewOut)
+            }
+            
+            # Assess kurtosis of model residuals
+            Kurt <- moments::kurtosis(residuals(ModTM1)) - 3
+            
+            if (Kurt > 2) {
+              
+              KurtOut <- "Residuals of ModTM1: leptokurtic"
+              print(KurtOut)
+              
+            } else if (Kurt < -2) {
+              
+              KurtOut <- "Residuals of ModTM1: platykurtic"
+              print(KurtOut)
+              
+            } else {
+              
+              KurtOut <- "Residuals of ModTM1: mesokurtic"
+              print(KurtOut)
+            }
+          
+      
+      # 4. Normality of random effect
+        
+        # Shapiro-Wilks test
+        NormResRF <- shapiro_test(coef(ModTM1)[, "(Intercept)"]) # Check normal distribution of random effect intercepts
+        
+        if (NormResRF$p.value < 0.05) {
+        
+          NormResRF2 <- "Random Effect: non-Guassian"
+          print(NormResRF2)
+          
+        } else {
+          
+          NormResRF2 <- "Random Effect: Guassian"
+          print(NormResRF2)
+          
+        }
+        
+          # QQ-plot of model random effect intercepts
+          QQResRF <- ggqqplot(coef(ModTM1)[, "(Intercept)"],
+                               ggtheme = theme_bw())
+      
+          # Check for data skewness and kurtosis to verify Gaussian distribution of residuals
+          
+            # Assess skewness of model residuals
+            SkewRF <- moments::skewness(coef(ModTM1)[, "(Intercept)"])
+          
+            if (SkewRF > 1) {
+              
+              SkewOutRF <- "Random Effect: right skew"
+              print(SkewOutRF)
+              
+            } else if (SkewRF < -1) {
+              
+              SkewOutRF <- "Random Effect: left skew"
+              print(SkewOutRF)
+              
+            } else {
+              
+              SkewOutRF <- "Random Effect: no skew"
+              print(SkewOutRF)
+            }
+            
+            # Assess kurtosis of model residuals
+            KurtRF <- moments::kurtosis(coef(ModTM1)[, "(Intercept)"]) - 3
+            
+            if (KurtRF > 2) {
+              
+              KurtOutRF <- "Random Effect: leptokurtic"
+              print(KurtOutRF)
+              
+            } else if (KurtRF < -2) {
+              
+              KurtOutRF <- "Random Effect: platykurtic"
+              print(KurtOutRF)
+              
+            } else {
+              
+              KurtOutRF <- "Random Effect: mesokurtic"
+              print(KurtOutRF)
+            }
+          
+  # COLLATE DATA ###############################################################
+  
+    # Collate the test outcome calls
+    AssTest <- as.data.frame(rbind("Data_Transformation" = ResTransTM,
+                                   "Transformation for Skewness-Kurtosis" = ResTransSK,
+                                   "Univariate_Normality" = ResNormUV,
+                                   "Multivariate_Normality" = ResNormMV,
+                                   "Residual_Normality_Assumption" = ResNormResTM,
+                                   "Univariate_Outliers" = ResOutUVTM, 
+                                   "Multivariate_Outliers" = ResOutMVTM, 
+                                   "Linearity" = ResRes.linTM, 
+                                   "Multicollinearity" = ResMultColTM, 
+                                   "Homogeneity_of_Variance" = ResEquVarTM,
+                                   "Homogeneity_of_Covariance" = ResEquCoVTM,
+                                   "Least_Square_of_MANOVA" = ResEmmsLSD,
+                                   "Mixed effects model" = ResMemLSD,
+                                   "Post_hoc_test" = ResPHLSD,
+                                   "Homogeneity of Variance" = HomVarMod,
+                                   "Shapiro-Wilk's test of residuals" = NormResMod,
+                                   "Model_residuals_skewness" = SkewOut,
+                                   "Model_residuals_kurtosis" = KurtOut,
+                                   "Shapiro-Wilk's test of random effect" = NormResRF2,
+                                   "Model_random_effect_skewness" = SkewOutRF,
+                                   "Model_random_effect_kurtosis" = KurtOutRF)) %>%
+      setNames(., "Outcome")
+      
+      
+    # Compile output data list
+    AovDatTM <- list("Summary" = SumStat,
+                     "Data Visualization" = DatDis,
+                     "Assumption_Test_Outcome" = AssTest,
+                     "Univariate_Data_Normality_Assumption" = NormUV,
+                     "QQ-plot_Univariate_Normality" = QQplot,
+                     "Skewness and Kurtosis Adjustment" = SkeKur,
+                     "Multivariate_Data_Normality_Assumption" = NormMV,
+                     "QQ-plot_Multivariate_Normality" = plotMQQTM,
+                     "Residual_Normality_Assumption" = NormResTM,
+                     "QQ-plot_Residuals" = QQpResTM,
+                     "Univariate_Outliers" = OutUVTM,
+                     "Multivariate_Outliers" = OutMVTM,
+                     "Homogeneity_of_Variance" = EquVarTM,
+                     "Homogeneity_of_Covariance" = BoxMTM,
+                     "Two-way MANOVA" = Res.ManTMwo %>% 
+                       { summary(., test = "Pillai") },
+                     "Mixed_effect_model_of_MANOVA" = res.emmswo,
+                     "Estimated_Marginal_Means_of_MANOVA" = res.emms.out.wo,
+                     "Two-way MANOVA with RE" = Res.ManTMw %>% 
+                       { summary(., test = "Pillai") },
+                     "Mixed_effect_model_of_MANOVA_RE" = res.emmsw,
+                     "Estimated_Marginal_Means_of_MANOVA_RE" = res.emms.out.w,
+                     "Mixed effect model" = ModTM1,
+                     "ANOVA of mixed effects model" = res.memTM,
+                     "Post_hoc_test" = posthocTM,
+                     "Letter_code_for_post_hoc" = PhLetter,
+                     "Significance_of_random_effect" = res.reTM,
+                     "Levene's test of residuals" =  ModHomVar,
+                     "Model_residuals_skedasticity" = SkedAss,
+                     "Model residuals normality" = NormResTM2,
+                     "QQ-plot_of_model_residuals" = QQResMod,
+                     "Skewness_of_model_residuals" = Skew,
+                     "Kurtosis_of_model_residuals" = Kurt,
+                     "Model random effect normality" = NormResRF,
+                     "QQ-plot_of_model_random effect" = QQResRF,
+                     "Skewness_of_model_random effect" = SkewRF,
+                     "Kurtosis_of_model_random effect" = KurtRF)
+  
+}) %>%
+  purrr::flatten(.)
+```

@@ -1,0 +1,178 @@
+---
+title: "Fold-change analysis"
+author: "Johannes S. P. Doehl"
+date: "2024-06-04"
+output: pdf_document
+---
+
+```{r setup-fold-change-analysis, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r collate-data-for-fold-change-analysis}
+# Extract dataframes containing count data
+DatFC <- RawDat[names(RawDat) %like% "FC"]
+```
+
+```{r data-wrangling-for-fold-change-analysis}
+#
+DatFC <- lapply(DatFC, function(qq) {
+  
+  NormFact <- lapply(unique(qq[["Exp_Rep"]]), function(rr) {
+    
+    RefFact <- qq %>%
+      dplyr::filter(Exp_Rep == rr, Diet == "WN", Route == "CTRL") %>%
+      .[["Hsp90"]]
+    
+    qq %>%
+      dplyr::filter(Exp_Rep == rr) %>%
+       {RefFact / .[["Hsp90"]]}
+    
+  }) %>%
+    purrr::flatten(.) %>%
+    bind_cols(.) %>%
+    t(.) %>%
+    as.vector(.)
+  
+  qq <- qq %>%
+    arrange(by_group = Exp_Rep) %>%
+    mutate(., Norm_factor = NormFact) %>%
+    mutate(., Norm_value = .$`HO-1` * .$Norm_factor)
+  
+  FoldDiff <- lapply(unique(qq[["Exp_Rep"]]), function(rr) {
+    
+    RefFact <- qq %>%
+      dplyr::filter(Exp_Rep == rr, Diet == "WN", Route == "CTRL") %>%
+      .[["Norm_value"]] %>%
+      as.vector(.)
+    
+    qq %>%
+      dplyr::filter(Exp_Rep == rr) %>%
+       .[["Norm_value"]] / RefFact
+    
+  }) %>%
+    purrr::flatten(.) %>%
+    bind_cols(.) %>%
+    t(.) %>%
+    as.vector(.)
+  
+  qq <- qq %>%
+    arrange(by_group = Exp_Rep) %>%
+    mutate(., Fold_diff = FoldDiff) %>%
+    mutate(., log2_fold_diff = log2(.$Fold_diff))
+})
+```
+
+```{r one-way-analysis-for-fold-change}
+#Data analysis by one-way model
+ResFC <- lapply(DatFC, function(bb) {
+  
+  # DATA PREPARATION
+  ExpDat <- bb %>%
+    dplyr::select(any_of(c("Exp_Rep", "Diet", "Route", "log2_fold_diff"))) %>%
+    rename(any_of(c(Counts = "log2_fold_diff"))) %>%
+    mutate(., across(Exp_Rep, as.factor)) %>%
+    dplyr::filter(!(Diet == "WN" & Route == "CTRL")) %>%
+    mutate(., Groups = paste(.$Diet, .$Route, sep = "_")) %>%
+    droplevels(.)
+  
+    # Set factor references for analysis
+    ExpDat <- within(ExpDat, Diet <- relevel(Diet, ref = "WN"))
+  
+    
+  # HYPOTHESIS TESTING SELECTION #############################################
+  
+  for (xx in 1:100) {
+  
+  # Make decision about data transformation   
+  dd <- readline("Select statistical test to run based on assumption tests:
+                  0 = Exist loop
+                  1 = Standard onw-way ANOVA
+                  2 = Welch's one-way ANOVA
+                  3 = Robust one-way ANOVA
+                  4 = Kruskal-Wallis test"
+                  )
+      
+    if (dd == 0) {
+      
+      break
+    
+    } else if (dd == 1) {  
+      
+      # Onw-way ANOVA (standard)
+      res.aov <- rstatix::anova_test(Counts ~ Groups, data = ExpDat) 
+      
+        ResMod <- "Standard one-way ANOVA"
+        print(ResMod)
+      
+        # Post-Hoc for one-way ANOVA (standard)
+        PairComp <- rstatix::tukey_hsd(x = ExpDat, formula = Counts ~ Groups) 
+        
+          ResPH <- "Tukey-HSD Test"
+          print(ResPH)
+  
+  
+    } else if (dd == 2) { # Violation of equal variance
+    
+      # Welch's one-way ANOVA
+      res.aov <- welch_anova_test(Counts ~ Groups, data = ExpDat)
+      
+        ResMod <- "Welch one-way ANOVA"
+        print(ResMod)
+      
+        # Post-Hoc for Welch's one-way ANOVA
+        PairComp <- games_howell_test(Counts ~ Groups, data = ExpDat)
+        
+          ResPH <- "Games-Howell Test"
+          print(ResPH)
+  
+      
+    } else if (dd == 3) { # Violation of no outliers
+    
+      # Robust Two-way Mixed ANOVA
+      res.aov <- t1way(Counts ~ Groups, data = ExpDat)
+      
+        ResMod <- "Robust two-way Mixed ANOVA"
+        print(ResMod)
+      
+        # Post-Hoc for robust Two-way Mixed ANOVA
+        PairComp <- lincon(Counts ~ Groups, p.adjust.method = "BH", data = ExpDat)
+        
+          ResPH <- "Linear Contrast Expression"
+          print(ResPH)
+    
+      
+    } else if (dd == 4) { # Multiple assumption violations
+      
+      # Kruskal-Wallis test
+      res.aov <- kruskal_test(Counts ~ Groups, data = ExpDat)
+       
+        ResMod <- "Kruskal-Wallis test"
+        print(ResMod)
+      
+        # Post-Hoc for Kruskal-Wallis test
+        PairComp <- dunn_test(Counts ~ Groups, data = ExpDat)
+        
+          ResPH <- "Dunn's Test"
+          print(ResPH)
+      
+    } else {
+    
+      print("Wrong input for dd")
+      stop()
+    }
+  }
+      
+  # COLLATE DATA----------------------------------------------------------------
+      
+    # Compile output data list
+    AovDat <- list("Type of one-way model applied"       = ResMod,
+                   "One-way model output"                = res.aov,
+                   "Type of pairwise comparison applied" = ResPH,
+                   "Pairwise comparison output"          = PairComp
+                   )
+})
+```
+

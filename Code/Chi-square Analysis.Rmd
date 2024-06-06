@@ -1,0 +1,126 @@
+---
+title: "Chi-square Analysis"
+author: "Johannes S. P. Doehl"
+date: "2024-06-01"
+output: pdf_document
+---
+
+```{r setup-chi-square-analysis, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r collate-data-for-chi-square-analysis-from-RawDat}
+# Extract dataframes containing count data
+DatC2 <- RawDat[names(RawDat) %like% "LR"]
+
+# Set reference to "WN"
+DatC2 <- lapply(DatC2, function(ww) {
+  
+  ww <- ww %>%
+    mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    mutate(., Groups = paste(.$Diet, .$Route, sep = "_"), .after = "Route") %>%
+    mutate(., across(where(is.character), as.factor)) %>%
+    droplevels(.) %>%
+    within(., Diet <- relevel(Diet, ref = "WN"))
+  
+})
+
+# Split dataframe containing multiple tissue data into separate dataframes for analysis
+DatC2Spt <- mapply(function(qq, rr) {
+  
+  if (nlevels(qq$Tissue) > 1) {
+    
+    xxx <- split(qq, qq$Tissue) %>%
+      
+      lapply(., function(ww) {
+        
+        droplevels(ww)
+        })
+    
+    xxx %>%
+      purrr::set_names(paste(rr, names(xxx), sep = " - "))
+    
+  } else {
+    
+    list(qq)
+  }
+}, qq = DatC2, rr = names(DatC2), SIMPLIFY = FALSE) %>%
+  flatten(.)
+
+
+# Select data to be analyzed
+DatC2Spt <- lapply(DatC2Spt, function(zz) { 
+  
+  zz %>% # filters out the unfed tick data
+    janitor::tabyl(Event, Groups, Tissue) %>% # creates the contingency tables separated by time point post infestation
+    lapply(., as.data.frame) %>%
+    purrr::flatten(.) %>%
+    bind_cols(.) %>%
+    as.data.frame(.) %>%
+    tibble::column_to_rownames(.data = ., var = "Event")
+}) 
+```
+
+```{r chi-square-analysis, include = FALSE}
+# 2. ANALYSIS OF LIVE/DEAD TICK COUNTS BY CHI SQUARE / FISHER'S EXACT TEST------
+
+# Step 1: Chi Square test
+# Chi-square is applied in the first instance to check test assumptions/reliability
+ResC2 <- lapply(DatC2Spt, janitor::chisq.test) # janitor version produces expected values
+
+
+# Step 2: Assess if Chi Square of assumption of no two cells with <5 or at least one 0 is present in expected data values
+ResC2 <- lapply(names(ResC2), function(xx) {
+  
+  # Check if Chi-Square throws a warning about being unreliable
+  tryCatch({janitor::chisq.test(DatC2Spt[[xx]]); EM <<- 0}, # In case it throws a warning
+           warning = function(w) {EM <<- 1})
+  
+  # Select Fisher's Exact test if there are any concerns with the Chi-square test
+  if (any(ResC2[[xx]]$expected < 5) | 
+      any((ResC2[[xx]]$expected == 0) == TRUE) |
+      EM == 1) {
+    
+    # Fisher's Exact test in case assumptions are not met for Chi Square test
+    
+    TestNam <- "Fisher's Exact test applied"  
+    print(TestNam)
+    
+    # Fisher Exact test applied to both contingency tables
+    TestLDT <- rstatix::fisher_test(DatC2Spt[[xx]]) 
+    
+    # Pairwise Fisher's exact test
+    Pairwise <- rstatix::pairwise_fisher_test(DatC2Spt[[xx]], 
+                                              p.adjust.method = "BH", 
+                                              detailed = TRUE)
+    
+    # Extract odds ratios from Fisher's exact test
+    Output <- list("Fisher's Exact test" = TestLDT,
+                   "Pairwise Fisher's Exact test" =  Pairwise,
+                   "Odds Ratios" = oddsratio.fisher(as.matrix(t(DatC2Spt[[xx]]))))
+                   
+  } else { # Otherwise, stick with the Chi-square test
+    
+    TestNam <- "Chi-Square test applied"
+    print(TestNam)
+    
+    # Keep the Chi-square test
+    TestLDT <- rstatix::chisq_test(DatC2Spt[[xx]]) # rstatix version is more output friendly
+ 
+    # Pairwise Chi-sqaure test
+    Pairwise <- rstatix::pairwise_chisq_gof_test(DatC2Spt[[xx]], 
+                                                 p.adjust.method = "BH")
+    
+    # Calculate odds ratio with 95% CI
+    Output <- list("Chi-square test" = TestLDT,
+                   "Pairwise Chi-square test" = Pairwise,
+                   "Odds Ratios" = oddsratio(as.matrix(t(DatC2Spt[[xx]]))))
+  }
+}) %>%
+  setNames(names(ResC2))
+
+gc()
+```

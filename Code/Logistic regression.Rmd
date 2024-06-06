@@ -1,0 +1,247 @@
+---
+title: "Logistic regression"
+author: "Johannes S. P. Doehl"
+date: "2024-05-24"
+output: pdf_document
+---
+
+```{r setup-logistic-regression, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r functions-for-logistic-regression}
+# Anti-diagonal selection (reverse diag() function)
+antidiag <- function(x, Offset = 0L) {
+  
+  x[col(x) + row(x) - ncol(x) - 1L == Offset]
+  
+  }
+```
+
+```{r collate-data-for-logistic-regression-from-RawDat}
+# Extract dataframes containing count data
+DatLgR <- RawDat[names(RawDat) %like% "LR"]
+
+# Set reference to "WN"
+DatLgR <- lapply(DatLgR, function(ww) {
+  
+  ww <- ww %>%
+    mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    mutate(., Groups = paste(.$Diet, .$Route, sep = "_"), .after = "Route") %>%
+    mutate(., across(where(is.character), as.factor)) %>%
+    droplevels(.)
+  
+  # Set factor references for analysis
+  ww <- within(ww, Diet <- relevel(Diet, ref = "WN"))
+  
+})
+
+# Split dataframe containing multiple tissue data into separate dataframes for analysis
+DatLgRSpt <- mapply(function(qq, rr) {
+  
+  if (nlevels(qq$Tissue) > 1) {
+    
+    xxx <- split(qq, qq$Tissue) %>%
+      
+      lapply(., function(ww) {
+        
+        droplevels(ww)
+        })
+    
+    xxx %>%
+      purrr::set_names(paste(rr, names(xxx), sep = " - "))
+    
+  } else {
+    
+    list(qq)
+  }
+}, qq = DatLgR, rr = names(DatLgR), SIMPLIFY = FALSE) %>%
+  flatten(.)
+```
+
+```{r logistic-regression}
+# Analyzes data of experiments
+ResLgR <- lapply(DatLgRSpt, function(zz) {
+  
+  # Splitting dataset into training set and test set (70% of data points to training set)
+  index <- caret::createDataPartition(zz$Event, p = .7, list = FALSE)
+  train <- zz[index, ]
+  test <- zz[-index, ]
+  
+  
+  # Logistic regression models
+  ModAll <- list(
+    # Standard predictors
+    "Mod1" = glm(as.formula(
+      paste0("Event ~ ",
+             paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(zz)],
+                   collapse = " + "))),
+      data = train,
+      family = binomial()),
+    
+    # With interaction
+    "Mod2" = glm(as.formula(
+      paste0("Event ~ ",
+             paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(zz)],
+                   collapse = " * "))),
+      data = train,
+      family = binomial()),
+    
+    # With single merged grouping variable
+    "Mod3" = glm(Event ~ Groups,
+                    data = train,
+                    family = binomial())
+  )
+  
+  # Check which model has the lowest AIC
+  AICsel <- which.min(
+              list("Mod1" = summary(ModAll[[1]])[["aic"]],
+                   "Mod2" = summary(ModAll[[2]])[["aic"]],
+                   "Mod3" = summary(ModAll[[3]])[["aic"]])
+              )
+  
+  # Select model with lowest AIC
+  Mod <- ModAll[[names(AICsel)]]
+  
+  
+  # Model quality control
+  
+  # train
+  
+  # Converting from probability to actual output
+  train$pred_Event <- ifelse(Mod$fitted.values >= 0.5, "Yes", "No")
+  
+  # Generating the classification table
+  ctab_train <- table(train$Event, train$pred_Event)
+  ctab_train
+
+  
+  # Ensure that both columns are present
+  if (all(dim(ctab_train) == 2)) {
+    
+    ctab_train <- ctab_train
+    
+  } else {
+    
+    # Add missing column
+    if (colnames(ctab_train) == "Yes") {
+      
+      # Add "No" column with zero values
+      ctab_train <- cbind(No = c(0,0), ctab_train)
+      
+    } else {
+      
+      # Add "Yes" column with zero values
+      ctab_train <- cbind(ctab_train, Yes = c(0,0))
+      
+    }
+  }
+  
+  # Check model accuracy (train)
+  # Accuracy in Training dataset (>70% is interpreted as a good fit)
+  # Accuracy = (TP + TN)/(TN + FP + FN + TP) 
+  accuracy_train <- sum(diag(ctab_train))/sum(ctab_train)*100
+  
+  # Misclassification Rate in Training dataset
+  # Misclassification Rate = (FP+FN)/(TN + FP + FN + TP)
+  MisClass_train <- sum(antidiag(ctab_train))/sum(ctab_train)*100
+  
+  # True Positive Rate(TPR) in Training dataset
+  # TPR = TP/(FN + TP)
+  TPR_train <- (ctab_train[2, 2]/sum(ctab_train[2, ]))*100
+  
+  # True Negative Rate (TNR) in Training dataset
+  # TNR = TN/(TN + FP)
+  TNR_train <- (ctab_train[1, 1]/sum(ctab_train[1, ]))*100
+  
+  # Precision in Training dataset
+  # Precision = TP/(FP + TP)
+  Precision_train <- (ctab_train[2, 2]/sum(ctab_train[, 2]))*100
+  
+  # F-score calculation
+  F_Score_train <- (2 * Precision_train * TPR_train / (Precision_train + TPR_train))/100
+    
+  # ROC curve
+  RocCurv_train<- pROC::auc(pROC::roc(train$Event, Mod$fitted.values))
+  
+  
+  # test
+  
+  # Predicting in the test dataset
+  pred_prob_test <- predict(Mod, test, type = "response")
+  # pred_prob_test2 <- predict(Mod2, test, type = "response")
+  
+  # Converting from probability to actual output
+  test$pred_Event <- ifelse(pred_prob_test >= 0.5, "Yes", "No")
+  
+  # Generating the classification table
+  ctab_test <- table(test$Event, test$pred_Event)
+  ctab_test
+  
+  
+  # Check accuracy value (test)
+  if (all(dim(ctab_test) == 2)) {
+    
+    ctab_test <- ctab_test
+    
+  } else {
+    
+    # Add missing column
+    if (colnames(ctab_test) == "Yes") {
+      
+      # Add "No" column with zero values
+      ctab_test <- cbind(No = c(0,0), ctab_test)
+      
+    } else {
+      
+      # Add "Yes" column with zero values
+      ctab_test <- cbind(Yes = c(0,0), ctab_test)
+      
+    }
+  }
+
+  # Check model accuracy (test)
+  # Accuracy in test dataset (>70% is interpreted as a good fit)
+  # Accuracy = (TP + TN)/(TN + FP + FN + TP) 
+  accuracy_test <- sum(diag(ctab_test))/sum(ctab_test)*100
+  
+  # Misclassification Rate in test dataset
+  # Misclassification Rate = (FP+FN)/(TN + FP + FN + TP)
+  MisClass_test <- sum(antidiag(ctab_test))/sum(ctab_test)*100
+  
+  # True Positive Rate(TPR) in test dataset
+  # TPR = TP/(FN + TP)
+  TPR_test <- (ctab_test[2, 2]/sum(ctab_test[2, ]))*100
+  
+  # True Negative Rate (TNR) in test dataset
+  # TNR = TN/(TN + FP)
+  TNR_test <- (ctab_test[1, 1]/sum(ctab_test[1, ]))*100
+  
+  # Precision in test dataset
+  # Precision = TP/(FP + TP)
+  Precision_test <- (ctab_test[2, 2]/sum(ctab_test[, 2]))*100
+  
+  # F-score calculation
+  F_Score_test <- (2 * Precision_test * TPR_test / (Precision_test + TPR_test))/100
+  
+  
+  # Collated data
+  list("Binomial logistic regression model"   = Mod,
+       "Accuracy rate"                        = accuracy_train,
+       "Misclassification rate"               = MisClass_train,
+       "True positive rate"                   = TPR_train,
+       "True negative rare"                   = TNR_train,
+       "Model precision"                      = Precision_train,
+       "F-Score"                              = F_Score_train,
+       "Accuracy rate of prediction"          = accuracy_test,
+       "Misclassification rate of prediction" = MisClass_test,
+       "True positive rate of prediction"     = TPR_test,
+       "True negative rare of prediction"     = TNR_test,
+       "Predition precision"                  = Precision_test,
+       "F-Score of prediction"                = F_Score_test)
+})
+```
+

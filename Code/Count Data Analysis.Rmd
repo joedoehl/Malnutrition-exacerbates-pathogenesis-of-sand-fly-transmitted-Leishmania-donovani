@@ -1,0 +1,392 @@
+---
+title: "Count Data Analysis"
+author: "Johannes S. P. Doehl"
+date: "2024-05-24"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-count-data, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r collate-count-data-for-regression-analysis-from-RawDat}
+# Extract dataframes containing count data
+DatCnt <- RawDat[names(RawDat) %like% "Cnt"]
+
+# Split dataframe containing multiple tissue data into separate dataframes for analysis
+DatCntSpt <- mapply(function(qq, rr) {
+  
+  if (nlevels(qq$Tissue) > 1) {
+    
+    xxx <- split(qq, qq$Tissue) %>%
+      
+      lapply(., function(ww) {
+        
+        droplevels(ww)
+        })
+    
+    xxx %>%
+      purrr::set_names(paste(rr, names(xxx), sep = " - "))
+    
+  } else {
+    
+    list(qq)
+  }
+}, qq = DatCnt, rr = names(DatCnt), SIMPLIFY = FALSE) %>%
+  flatten(.)
+
+# Merge Diet and Route variable into one column when separate factor levels do not occur for all groups
+xxx <- lapply(DatCntSpt[names(DatCntSpt) %like% "2e-f" |
+                         names(DatCntSpt) %like% "3d" |
+                          names(DatCntSpt) %like% "S1c"], function(dd) {
+  
+  dd %>%
+    mutate(., Diet = paste(.$Diet, .$Route, sep = "_")) %>%
+    mutate(., across(where(is.character), as.factor)) %>%
+    subset(., select = -c(Route))
+  
+}) 
+
+DatCntSpt[names(xxx)] <- xxx
+
+rm(xxx)
+```
+
+```{r regression-models-for-count-data}
+# The regression models I want to run
+RegMods <- c("poisson", "negative_binomial")
+
+ZroInf <- c("zero-inflated", "standard")
+
+# Analyzes data of experiments
+ResCnt <- mapply(function(aa, zz) {
+
+  lapply(ZroInf, function(cc) {
+      
+      lapply(RegMods, function(dd) {
+  
+        if (cc == "zero-inflated") {
+            
+          if (dd == "negative_binomial") {
+            
+            # Zero-inflated negative binomial regression with random effect
+            Mod <- glmmTMB(formula = as.formula(
+              paste0("Counts ~ ",
+                 paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                       collapse = " * "))),
+             data = aa,
+             family = nbinom2,
+             zi = ~ 1)
+            
+          } else { # Poisson
+            
+            # Zero-inflated Poisson regression with random effect
+            Mod <- glmmTMB(formula = as.formula(
+              paste0("Counts ~ ",
+                 paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                       collapse = " * "))),
+             data = aa,
+             family = poisson,
+             zi = ~ 1)
+            
+          }
+          
+          # Replaced the data entry in the formula, with something the nagelkerke() function can call as "aa" is not recognized
+          Mod[["call"]][["data"]] <- parse(text = paste0("DatCntSpt[[", zz, "]]"))[[1]]
+          
+        } else { # "standard"
+          
+          if (dd == "negative_binomial") {
+          
+            # Negative Binomial regression model
+            Mod <- MASS::glm.nb(formula = as.formula(
+              paste0("Counts ~ ",
+                 paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                       collapse = " * "))),
+                                data = aa)
+          
+          } else { # Poisson
+            
+            # Poisson regression model
+            Mod <- glm(formula = as.formula(
+              paste0("Counts ~ ",
+                 paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                       collapse = " * "))), 
+                       family = poisson,
+                       data = aa)
+            
+          }
+            
+          # Replaced the data entry in the formula, with something the nagelkerke() function can call as "aa" is not recognized
+          Mod[["call"]][["data"]] <- parse(text = paste0("DatCntSpt[[", zz, "]]"))[[1]]
+      
+        }
+        print(zz)
+        
+        # ANOVA of model to determine significance of predictor variable          
+        AovMod <- car::Anova(Mod,
+                             type = "III")
+    
+        # Pseudo R^2 generation
+        # Pseudo R-squared measures are relative measures among similar models indicating how well the model explains the data
+        PseudoR2 <- rcompanion::nagelkerke(Mod)
+        
+        
+        # Dispersion statistic to see which model brings dispersion closest to 1
+        E2 <- residuals(Mod, type = "pearson")
+        N  <- nrow(aa)
+        
+        if (dd == "negative_binomial") {
+  
+          # For negative binomial regression
+          p  <- length(coef(Mod)) + 1  # '+1' is for variance parameter in NB
+          
+        } else {
+  
+          # For Poisson regrassion
+          p  <- length(coef(Mod))
+          
+        }
+  
+        DispTest <- sum(E2^2) / (N - p) # Model dispersion
+        
+        # Calculates dispersion ratio
+        DispTest2 <- performance::check_overdispersion(Mod)
+    
+        # looks at mean and variance of dependent variable
+        DispTest3 <- pastecs::stat.desc(aa$Counts)[c("mean", "var")]
+        DispTest3 <- c(DispTest3, "var/mean" = DispTest3["var"] / DispTest3["mean"])
+        
+        # Estimated marginal means analysis of the model
+        EmmMod <- emmeans::emmeans(Mod, as.formula(
+          paste0("~ ",
+                 paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                       collapse = " * "))))
+  
+        # Pairwise comparison using the estimated marginal means analysis
+        ParMod <- pairs(EmmMod,
+                        adjust = "BH")
+  
+        # Adding a letter code to the estimate marginal means output
+        ResMod <- multcomp::cld(EmmMod,
+                                alpha = 0.05,
+                                Letters = letters,  # Use lower-case letters for .group
+                                adjust = "BH")  # Tukey adjustment for multiple comparisons
+      
+        
+        # Stored output
+        list("Regression model"                      = Mod,
+             "Dispersion test"                       = DispTest,
+             "Dispersion test 2"                     = DispTest2,
+             "Dispersion test 3"                     = DispTest3,
+             "ANOVA of model"                        = AovMod,
+             "Pseudo R-square"                       = PseudoR2,
+             "Estimated Marginal Means"              = EmmMod,
+             "Pairwise Comparison of EMMs"           = ParMod,
+             "Pairwise Comparison of EMMs (letters)" = ResMod)
+
+    }) %>%
+      purrr::set_names(RegMods)
+    
+  }) %>%
+    purrr::set_names(ZroInf)
+
+}, aa = DatCntSpt, zz = c(1:length(DatCntSpt)), SIMPLIFY = FALSE) 
+```
+
+```{r Model-comparison-count-data}
+# Compare standard models with one another--------------------------------------
+
+# Get the models for anova comparison
+ModComp <- mapply(function(aa, zz) {
+  
+  xxx <- list()
+    
+  lapply(ZroInf, function(dd) {
+      
+    lapply(RegMods, function(cc) {
+    
+      xxx <- append(xxx,
+                      list(aa[[dd]][[cc]][["Regression model"]]))
+    }) %>%
+    purrr::flatten()
+     
+  }) %>%
+    purrr::flatten() %>%
+    purrr::set_names(
+      
+      lapply(ZroInf, function(dd) {
+      
+        paste(dd, RegMods, sep = " - ")
+        
+        }) %>% unlist()
+      )
+  
+}, aa = ResCnt, zz = c(1:length(ResCnt)), SIMPLIFY = FALSE)
+
+# Get the model summaries
+ModSum <- lapply(ModComp, function(aa) {
+  
+  lapply(aa, function(bb) {
+      
+    summary(bb)
+
+  })
+})
+
+
+# Extract AICs for the different models
+AIC <- lapply(ModSum, function(dd) {
+  
+  mapply(function(ee, ff) {
+    
+    if (ff) {
+      
+      dd[[ee]][["aic"]]
+      
+    } else {
+      
+      dd[[ee]][["AICtab"]][["AIC"]]
+      
+    }
+  }, ee = names(dd), ff = names(dd) %like% "standard", SIMPLIFY = FALSE)
+  
+})
+
+# Select the dispersion values closest to one and select its model
+ModSelAIC <- lapply(AIC, function(gg) {
+  
+  # Identify the test with has the dispersion closest to 1 
+  which.min(gg) %>%
+    names(.) %>%
+    gsub(".*: ", "", .)
+  
+})
+
+
+# Get all the selected model information
+RegModAIC <- mapply(function(dd, ff) {
+  
+  SelID <- dd %>%
+    strsplit(., split = " - ") %>%
+    unlist(.)
+  
+  lapply(ff[names(ff) %like% SelID[1]], function(gg) {
+    
+    lapply(gg[names(gg) %like% SelID[2]], function(hh) {
+    
+      hh
+      
+    })
+    
+  }) %>%
+    unlist(., recursive = FALSE, use.names = FALSE) %>%
+    purrr::set_names(dd)
+  
+}, dd = ModSelAIC, ff = ResCnt, SIMPLIFY = FALSE)
+```
+
+```{r dispersion-values-count-data}
+# Extract all the dispersion values
+DispFac <- lapply(ResCnt, function(aa) {
+  
+  # Generate a vector of names to be assigned below
+  yyy <- mapply(function(yy, zz) {
+    
+    lapply(names(yy), function(rr) {
+    
+      paste(gsub(".*: ", "", zz), rr, sep = " - ")
+      
+    })
+    
+  }, yy = aa, zz = names(aa), SIMPLIFY = FALSE) %>%
+    unlist(.)
+  
+  # Extract the Dispersion values
+  lapply(aa %>%
+           purrr::flatten() %>%
+           purrr::set_names(yyy), function(bb) {
+
+             bb[["Dispersion test"]]
+
+  }) %>%
+    bind_cols(.) 
+  
+}) %>%
+  # Combine and reformat the dataframe
+  bind_rows(., .id = "Model_Type") %>%
+  as.data.frame(.) %>%
+  tibble::column_to_rownames("Model_Type") %>%
+  t(.) %>%
+  as.data.frame(.) %>%
+  tibble::rownames_to_column(var = "Model_Type") 
+
+
+# Select the dispersion values closest to one and select its model
+ModSelDisp <- lapply(2:ncol(DispFac), function(cc) {
+  
+  # Identify the test with has the dispersion closest to 1 
+  DispFac[which.min(abs(DispFac[[cc]]-1)), "Model_Type"]
+  
+}) %>%
+  purrr::set_names(colnames(DispFac)[-1])
+
+
+# Get all the selected model information
+RegModDisp <- mapply(function(dd, ff) {
+  
+  SelID <- dd %>%
+    strsplit(., split = " - ") %>%
+    unlist(.)
+  
+  lapply(ff[names(ff) %like% SelID[1]], function(gg) {
+    
+    lapply(gg[names(gg) %like% SelID[2]], function(hh) {
+    
+      hh
+      
+    })
+    
+  }) %>%
+    unlist(., recursive = FALSE, use.names = FALSE) %>%
+    purrr::set_names(dd)
+  
+}, dd = ModSelDisp, ff = ResCnt, SIMPLIFY = FALSE)
+```
+
+```{r assumption-tests-for-count-data-model}
+# Normality of model residuals
+ResAssump <- lapply(RegModAIC, function(aa) {
+  
+  # Shapiro-Wilks test of residuals
+  NormRes <- shapiro_test(residuals(aa[[1]][["Regression model"]])) %>% # Shapiro-Wilks test of model residuals
+    mutate("sig." = ifelse(.$p.value < 0.1, ".",
+                           ifelse(.$p.value <= 0.05, "*",
+                                  ifelse(.$p.value < 0.01, "**",
+                                         ifelse(.$p.value < 0.001, "***",
+                                                ifelse(.$p.value < 0.0001, "****", ""))))))
+    
+  # Data visualization: QQ-plot
+  plotRes <- ggqqplot(residuals(aa[[1]][["Regression model"]]), ggtheme = theme_bw())
+  
+  # Collate the tests
+  list("Shapiro_Wilks" = NormRes,
+       "QQ_plot"       = plotRes)
+    
+})
+
+# pastecs::stat.desc(DatCntSpt$`Figure 2c Cnt`$Counts)
+
+```
+
+```{r clean-up-count-data-analysis-variables}
+rm(RegMods, ZroInf)
+
+gc()
+```
+
