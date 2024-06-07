@@ -18,13 +18,14 @@ Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around 
 # NOTE: the time variable ("Time_point") is used to split the data, thus, the repeated measure aspect is lost for the one-way and pairwise analysis downstream of the two-way analysis
 
 # Robust one-way ANOVA split by other variables (two-way)
-t1waySplit <- function(Data, indVar, outerLev) {
+t1waySplit <- function(Data, indVar, outerLev, model) {
   
   lapply(levels(Data[[outerLev]]), function(xx) {
       
     t1way(formula = as.formula(paste("Counts ~", indVar)), 
           data = Data[Data[[outerLev]] %in% xx,], 
-          tr = 0.1) %>%
+          tr = 0.1,
+          error = model) %>%
       append(., split(.$effsize_ci, 
                       f = c("effsize_ci_lower", "effsize_ci_upper")), 
              after = 5) %>%
@@ -50,7 +51,29 @@ linconSplit <- function(Data, indVar, outerLev) {
     lincon(formula = as.formula(paste("Counts ~", indVar)), 
            data = Data[Data[[outerLev]] %in% xx,], 
            tr = 0.1,
-           method = "BH")
+           method = "BH") %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        
+        yy[yy != ""]
+      }) %>%
+      .[c(6:9)] %>%
+      lapply(., function(zz) {
+        
+        zz %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      tibble::remove_rownames(.) %>%
+      tibble::column_to_rownames(., var = "V1") %>%
+      t(.) %>%
+      as.data.frame(.) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., across(where(Hmisc::all.is.numeric), as.numeric))
   }) %>%
     purrr::set_names(levels(Data[[outerLev]])) %>%
     bind_rows(., .id = outerLev) %>%
@@ -92,11 +115,39 @@ Dat2wSpt <- mapply(function(qq, rr) {
   }
 }, qq = Dat2w, rr = names(Dat2w), SIMPLIFY = FALSE) %>%
   flatten(.)
+
+# Introduce a small amount of variability into the Week_0 average weight that was used
+Dat2wSpt <- lapply(c(1:length(Dat2wSpt)), function(zz) {
+  
+  # Get the average value that was used
+  Mean2w <- Dat2wSpt[[zz]] %>% 
+    dplyr::filter(Time_point %in% "Week_0") %>%
+    .[, "Weight_g"] %>%
+    unique(.)
+  
+  # The number of times it was applied
+  RowNum <- Dat2wSpt[[zz]] %>% 
+    dplyr::filter(Time_point %in% "Week_0") %>%
+    nrow(.)
+  
+  # Set seed to make this process reproducible
+  set.seed(234)
+  
+  # Generate an artificial dataset with set mean and a small SD
+  WgtW0 <- rnorm(n = RowNum, mean = Mean2w, sd = 0.1)
+  
+  # Replace the values
+  Dat2wSpt[[zz]][Dat2wSpt[[zz]]$Time_point %in% "Week_0", "Weight_g"] <- WgtW0
+  
+  # Round weights back to one decimal
+  Dat2wSpt[[zz]] %>%
+    mutate(., across(Weight_g, ~ round(.x, 1)))
+})
 ```
 
-```{r three-way-mixed-analysis}
+```{r two-way-mixed-analysis}
 # Data analysis by two-way model
-Res3w <- lapply(Dat2wSpt, function(bb) {
+Res2wMix <- lapply(Dat2wSpt, function(bb) {
   
   # DATA PREPARATION
   ExpDat <- bb %>%
@@ -213,34 +264,22 @@ Res3w <- lapply(Dat2wSpt, function(bb) {
     EquVar <- ExpDat %>% # If violated, transformation may resolve the issue, or a robust mixed ANOVA can be applied
       group_by(Time_point) %>%
       levene_test(Counts ~ Diet, 
-                  data = .)
+                  data = .) %>%
+        mutate(., "Sig." = symnum(.$p,
+                              cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                              symbols = c("****", "***", "**", "*", "+", "ns")))
     
-      # scale-location plot
-      print(plot(Mod,
-            sqrt(abs(resid(.))) ~ fitted(.),
-            type = c("p","smooth"), 
-            lwd = 3, 
-            col.line = 1))
       
-        EquVarPlotRes1 <- recordPlot()
-        
-      # fitted vs residual with smooth line added
-      print(plot(Mod, 
-            type = c("p","smooth"), 
-            lwd = 3, 
-            col.line = 1))
-        
-        EquVarPlotRes2 <- recordPlot()
-    
-
-    # 4. HOMOGENEITY OF COVARIANCES---------------------------------------------
+  # 4. HOMOGENEITY OF COVARIANCES---------------------------------------------
     
     # The Box’s M is highly sensitive, so unless p<0.001 and your sample sizes are unequal, ignore it.
+    BoxM <- box_m(data = ExpDat[, "Counts", drop = FALSE], 
+            group = ExpDat[, "Diet"])
     
-    
-    # 5. SPHERICITY-------------------------------------------------------------
+  # 5. SPHERICITY-------------------------------------------------------------
+  
     # Mauchly's test executed automatically within anova_test() function, if within-subjects factor has >2 levels. For two within-subjects factor levels, the sphericity assumption hold by default. Here, we only have two levels in the within-subjects factor: "Ticks_Placed"
-      
+    
     # Two-way Mixed ANOVA (standard) for Maulchy's test
     Spher <- rstatix::anova_test( # This version is suitable if there are no ouliers
         data = ExpDat, dv = Counts, wid = Mouse,
@@ -292,6 +331,18 @@ Res3w <- lapply(Dat2wSpt, function(bb) {
     }
       
       print(EquVar)
+    
+      
+    # Assumption of equal covariance
+    if (BoxM$p.value <= 0.001) {
+      BoxMVar <- "Heterogenous covariance"
+      print(BoxMVar)
+    } else {
+      BoxMVar <- "Homogeneous covariance"
+      print(BoxMVar)
+    }
+      
+      print(BoxM)
       
       print(Spher)
       
@@ -740,15 +791,13 @@ Res3w <- lapply(Dat2wSpt, function(bb) {
         # One-way ANOVA for simple simple main effect
         res.aov1w <- t1waySplit(Data = ExpDat, 
                                 indVar = "Diet", 
-                                outerLev = "Time_point", 
-                                innerLev = "Route")
+                                outerLev = "Time_point")
           
     
           # Simple simple pairwise comparison
           res.aovPw <- linconSplit(Data = ExpDat, 
                                    indVar = "Diet", 
-                                   outerLev = "Time_point", 
-                                   innerLev = "Route")
+                                   outerLev = "Time_point")
         
     
     } else if (cc == 3) { # simple linear regression model
@@ -809,10 +858,15 @@ Res3w <- lapply(Dat2wSpt, function(bb) {
                  "Skewness and Kurtsosis"                = SkeKur,
                  "Residual_Normality_Assumption"         = NormRes,
                  "QQ plotof residuals"                   = QQplotRes,
+                 "Residual_Normality_Assumption"         = SkeKurRes,
                  "Outliers"                              = OutLierUV,
                  "Data Box plot (post-transformed)"      = DatDis2,
                  "Homogeneity_of_Variance"               = EquVar,
-                 "Residuals_vs_Fitted"                   = EquVarPlot,
+                 "Random_Effect_Normality_Assumption"    = NormResRE,
+                 "Random_Effect_Normality_Assumption"    = SkeKurRE,
+                 "Scale location"                        = EquVarPlotRes1,
+                 "Residuals_vs_Fitted"                   = EquVarPlotRes2,
+                 "Box's M test"                          = BoxM,
                  "Simple linear model"                   = Mod,
                  "2-way_ANOVA_post_hoc"                  = res.aov2w,
                  "1-way_ANOVA_simple_simple_main_effect" = res.aov1w,

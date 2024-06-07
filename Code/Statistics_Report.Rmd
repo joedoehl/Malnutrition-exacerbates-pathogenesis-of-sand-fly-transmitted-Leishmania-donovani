@@ -334,55 +334,72 @@ RawDat <- read_all(paste0(BibPath, "Raw Data/", FilNam))
 ~~~{=comment}
 # Script Execution for data analysis
 
-This is the ordered selection for the prompted option in the code chunk: 
+Figures 2a,b & 3b,e 
 ~~~
 ```{r chi-square-analysis-call, child = "Chi-square Analysis.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
-~~~
-```{r count-data-analysis-call, child = "Count Data Analysis.Rmd"}
-```
-
-~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+Figures 2a,b & 3b,e
 ~~~
 ```{r binomial-logistic-regression-call, child = "Logistic regression.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+Figures 2c,d,e-f & 3d & 4a & S1c  
+~~~
+```{r count-data-analysis-call, child = "Count Data Analysis.Rmd"}
+```
+
+~~~{=comment}
+Figure 1h 
 ~~~
 ```{r fold-change-analysis-call, child = "Fold Change Analysis.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+Figure 3c
 ~~~
 ```{r survival-analysis-call, child = "Survival Analysis.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+This is the ordered selection for the prompted option in the code chunk (column by column):
+Figure 4b           Figure 4c           Figure 4e-f         Figure S3C
+- 1,9,0,2,0         - 1,9,0,2,0         - 1,9,0,1,0         - 0,1,0
+- 0,1,0                                 - 1,9,0,1,0         - 0,3,0
+- 1,9,0,2,0                             - 1,9,0,2,0
+- 1,9,0,2,0                             - 1,9,2,1,0,1,0
+- 1,9,0,3,0                             - 1,9,0,1,0
+- 0,1,0                                 - 1,9,0,2,0
+- 0,1,0                                 - 1,9,0,1,0
+- 0,1,0                                 - 1,9,0,1,0
+                                        - 1,9,0,2,0
+                                        - 1,9,0,2,0
+                                        - 1,9,0,1,0
 ~~~
 ```{r two-way-analysis-call, child = "Two-way Analysis.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+Figures 1b-c        Figures 1e-f
+-                   -
+-                   -
+-                   -
 ~~~
 ```{r three-way-analysis-call, child = "Three-way Analysis.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+Figure S1a
+- 0,0,2,0
 ~~~
 ```{r two-way-mixed-analysis-call, child = "Two-way Mixed Analysis.Rmd"}
 ```
 
 ~~~{=comment}
-This is the ordered selection for the prompted option in the code chunk: 
+Figure 3a
+-
 ~~~
 ```{r three-way-mixed-analysis-call, child = "Three-way Mixed Analysis.Rmd"}
 ```
