@@ -1,0 +1,191 @@
+---
+title: "Figure 2e"
+author: "Johannes S. P. Doehl"
+date: "2024-06-26"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-2f, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-2f}
+# Figure name
+FigNam <- "Figure 2e-f"
+
+# Name of tissue processed
+TisNam <- "Spleen"
+
+# Total mice used
+TotN <- DatPctSpt %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>%
+  nrow(.)
+
+# Total N per group
+SampleN <- table(DatPctSpt %>%
+                   .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+                   .[[1]] %>%
+                   .[, c("Diet", "Route")]) %>% 
+  as.vector(.) %>%
+  purrr::set_names(paste(DatPctSpt %>%
+                           .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+                           .[[1]] %>%
+                           .[["Diet"]],
+                         DatPctSpt %>%
+                           .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+                           .[[1]] %>%
+                           .[["Route"]],
+                         sep = "_") %>%
+                     unique(.)
+    )
+
+# Dispersion ratio
+DispRatPct <- RegModAICPct %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>%
+  .[[1]] %>%
+  .[["Dispersion test"]]
+
+# Pseudo-R2
+pR2Pct <- RegModAICPct %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>%
+  .[[1]] %>%
+  .[["Regression model"]] %>%
+  summary(.) %>%
+  .[["pseudo.r.squared"]]
+
+# Likelihood ratio test to determine predictor relevance in model against null model
+LRTPct <- RegModAICPct %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>%
+  .[[1]] %>%
+  .[["Likelihood ratio test"]]
+```
+
+Whereas figure 2e looked at the retention of Dextran in draining lymph nodes, here, we investigated the accumulation of intradermally injected 10,000 kDa-Dextran in the spleen 72 h post sand fly bite, which made it passed the lymph node barrier. The samples were also analyzed by Flow cytometry. We analyzed a total of *N*=`r TotN` BALB/c mice (`r paste(names(SampleN), SampleN, sep = "=", collapse = ", ")`). This were the same mice as in figure 2e. For the data analysis, we tested Poisson and negative binomial regression models of the normalized cell counts, or beta regression after conversion of percentiles to ratios. Based on the Akaike information criterion (AIC), we selected a `r RegModAICPct %>% .[names(.) %like% FigNam & names(.) %like% TisNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` model for the data analysis post data re-scaling. The model fit of the data was reasonable producing no statistically significant departure from 1 for its dispersion ratio (`r round(DispRatPct, 4)`), producing a pseudo-R^2^ of `r round(pR2Pct, 4)`. The model output showed that "Diet" was a statistically significant predictors (Appendix table `r TabNum + 1`) and its inclusion made the model distinct from the null model (Appendix table `r TabNum + 2`), showing that statistically significantly more Dextran accumulated in spleens from malnourished BALB/c mice.
+
+```{r table-83-regression-analysis-of-counts, include = TRUE, eval = TRUE}
+# Model output
+RegModAICPct %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>% # pulls out the data from the list
+  .[[1]] %>% # picks the only model output left
+  .[["Regression model"]] %>%
+  summary(.) %>%
+  stats::coef(.) %>%
+  .[["mean"]] %>%
+  as.data.frame(.) %>%
+  mutate(., "sig." = .[["Pr(>|z|)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("Pr(>|z|)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 83**"),
+      subtitle = md("**Beta regression model output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-84-likelihood-ratio-test, include = TRUE, eval = TRUE}
+# Likelihood ratio test to compare model to null model
+LRTPct %>%
+  mutate(., "sig." = .[["Pr(>Chisq)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("Pr(>Chisq)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 84**"),
+      subtitle = md("**Beta regression model output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+As the only predictor variable was dichotomous, there was strictly no need for a pairwise comparison. But we performed one anyway to ensure that the approach via estimated marginal means was comparable to the model output. The pairwise comparison based on the estimated marginal means showed that different nutritional statuses produced statistical significance comparable to the model output (Appendix table `r TabNum + 3` & Appendix table `r TabNum + 4`). In agreement with the data from figure 2e, this data further supported the hypothesis that malnourishment resulted in a breakdown of the lymph node barrier, which could explained the increased parasite dissemination to the spleen in malnourished mice observed in figures 2c-d.
+
+```{r table-85-pairwise-comparison, include = TRUE, eval = TRUE}
+RegModAICPct %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>% # pulls out the data from the list
+  .[[1]] %>% # picks the only model output left
+  .[["Pairwise Comparison of EMMs"]] %>%
+  as.data.frame(.) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "Predictor pairs") %>%
+    tab_header(
+      title = md("**Appendix Table 85**"),
+      subtitle = md("**Pairwise comparison based on estimated marginal means**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-86-pairwise-comparison-letter, include = TRUE, eval = TRUE}
+RegModAICPct %>%
+  .[names(.) %like% FigNam & names(.) %like% TisNam] %>%
+  .[[1]] %>% # pulls out the data from the list
+  .[[1]] %>% # picks the only model output left
+  .[["Pairwise Comparison of EMMs (letters)"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 86**"),
+      subtitle = md("**Pairwise comparison letter code**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+
+```{r update-table-number-figure-2f}
+TabNum <- TabNum + 4
+```

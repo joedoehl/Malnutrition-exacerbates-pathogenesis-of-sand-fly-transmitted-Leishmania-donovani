@@ -1,0 +1,512 @@
+---
+title: "Figure 3a"
+author: "Johannes S. P. Doehl"
+date: "2024-06-07"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-3a, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-3a}
+# Figure name
+FigNam <- "Figure 3a"
+
+# Vector of cell names used for subgrouping
+SubFigNam <- Res3wM %>%
+  names(.)
+
+# Subset data that applies to this figure
+SubDat <- Res3wM %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(SubFigNam)
+
+# Total N per experiment
+TotN <- lapply(Dat3wMSpt, function(yy) {
+  
+  nlevels(yy$Mouse)
+  
+})
+
+# Group N
+GrpN <- lapply(Dat3wMSpt, function(qq) {
+  
+  eval(parse(text = paste0("table(", paste(paste0("qq$", c("Diet", "Route", "Time_point")), collapse = ","), ")[,,1]")))
+  
+})
+
+GrpN <- GrpN %>%
+  unlist(.) %>%
+  purrr::set_names(as.vector(outer(rownames(GrpN[[1]]), colnames(GrpN[[1]]), paste, sep="_"))) %>%
+  paste(names(.), ., sep = ": ", collapse = ", ")
+```
+
+## Data analysis
+
+In figure 3a, we present the longitudinal weekly observation of mouse body weight post *Leishmania donovani* infection, either by needle inoculation (needle), sand fly transmission (SF) or not at all (control). Information of a total of *N*=`r TotN` BALB/c mice (`r GrpN`) over the course of 22 weeks are shown here; "Week_0" being the weight before shipment, "Week_6" being the first week post-infection, and "Week_22" being the final week before the termination of the experiment.
+
+```{r call-for-figure-3a-extended, echo = FALSE, include = TRUE, eval = TRUE, fig.align = "center", out.width = "90%", fig.cap = "Fig.3a: This an extended version of the main figure 3a from the publication showing as well the pre-infection time-points. The dotted line marked the point of mouse infection."}
+grid::grid.raster(tiff::readTIFF(paste0(BibPath, "/Figures/Figure_3a_extended.tif"), native = TRUE))
+```
+
+We would need to analyze the data with a three-way approach to account for the three predictors, "Time_point" was the within-subject factor, while "Diet" and "Route" were the between-subject factors in the analysis with "Weight_g" being the dependent outcome variable.
+
+For a three-way mixed ANOVA, we had to assess the data for compliance with assumptions:
+!!!!!!!!!!!!!!!!!!!!!!!! covariance and sphericity assumption test !!!!!!!!!!!!!!!
+-   Data normality
+-   Homogeneity of variance
+-   Homogeneity of Covariance
+-   No significant outliers
+-   Assumption of sphericity
+
+Initial assumption assessment indicated that the Gaussian distribution assumption was not met along with the occurrence of several extreme outliers. Data transformation by Box-Cox power transformation reduced the magnitude of violation, although it did not completely remove it. Either way, we present the analysis of the assumption assessment with the transformed data below. Thus, data distribution and variance appear different in the main figure in the publication from the once that were used in the analysis post transformation.
+
+### Assumption analyses
+
+#### Data normality
+
+The assessment of the untransformed data distribution for each group was conducted by Shpiro-Wilks test and QQ-plot after splitting the data by all three predictors. Note that all groups consisted of *N*=`r GrpN` individuals, which made groups too small to assess data distribution reliably by Shapiro-Wilks test. In spite of this, we performed the analyses by Shapiro-Wilks test (Table `r TabNum + 1`) and QQ-pots (Fig.3a-1) and found deviations from normality.
+
+```{r table-87-shapiro-wilks, include = TRUE, eval = TRUE}
+# Data normality assumption
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam]][["Data_Normality_Assumption"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 87**"),
+      subtitle = md("**Univariate Shapito-Wilks test results**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = "Post-Infestion",
+      rows = c((SubDat[[SubFigNam]][["Data_Normality_Assumption"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.) + 1):
+                 (SubDat[[SubFigNam]][["Data_Normality_Assumption"]] %>%
+                     nrow(.)))
+    ) %>%
+    tab_row_group(
+      label = "Pre-Infection",
+      rows = c(1:(SubDat[[SubFigNam]][["Data_Normality_Assumption"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.)))
+    )
+```
+
+```{r qq-plot-figure-3a, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 9, out.width = "95%", fig.cap = "Fig.3a-1: QQ-plots of myeloid cell counts split into groups by predictor variables"}
+SubDat[[SubFigNam]][["QQ plot: by groups"]]
+```
+
+
+#### Homogeneity of variance
+
+The assessment of homogeneity of variance was conducted by Levene's test for the dataset split by the within-subject factor ("Time_point"). The analysis output showed that assumption of homogeneity between groups held for each week (Table `r TabNum + 2`).
+
+```{r table-88-homogeneity-of-variance, include = TRUE, eval = TRUE}
+# Homogenetiy of variance test: Levene's test outcome
+SubDat[[SubFigNam]][["Homogeneity_of_Variance"]] %>%
+  mutate(., "sig." = .[["p"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt(rowname_col = "Time_point") %>%
+    tab_stubhead(label = "Weeks p.i.") %>%
+    tab_header(
+      title = md("**Appendix Table 88**"),
+      subtitle = md("**Assessment of homogeneity of variance by week**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = "Post-Infestion",
+      rows = c((SubDat[[SubFigNam]][["Homogeneity_of_Variance"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.) + 1):
+                 (SubDat[[SubFigNam]][["Homogeneity_of_Variance"]] %>%
+                     nrow(.)))
+    ) %>%
+    tab_row_group(
+      label = "Pre-Infection",
+      rows = c(1:(SubDat[[SubFigNam]][["Homogeneity_of_Variance"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.)))
+    )
+```
+
+
+#### Outliers
+
+It can be difficult to determine outliers in small datasets reliably as the analysis is dependent on the interquartile range of the data per group. We attempted it anyway and found a total of `r nrow(SubDat[[SubFigNam]][["Outliers"]])` hypothetical outliers of which `r SubDat[[SubFigNam]][["Outliers"]] %>% .[.[["is.extreme"]],] %>% nrow(.)` were classed as extreme (Table `r TabNum + 3`).
+
+```{r table-89-myeloid-cells, include = TRUE, eval = TRUE}
+# Data outliers
+SubDat[[SubFigNam]][["Outliers"]] %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 89**"),
+      subtitle = md("**List of possible outliers**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = "Post-Infestion",
+      rows = c((SubDat[[SubFigNam]][["Outliers"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.) + 1):
+                 (SubDat[[SubFigNam]][["Outliers"]] %>%
+                     nrow(.)))
+    ) %>%
+    tab_row_group(
+      label = "Pre-Infection",
+      rows = c(1:(SubDat[[SubFigNam]][["Outliers"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.)))
+    )
+```
+
+
+### Three-way analysis
+
+Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam]][["Assumption_Test_Outcome"]]["3-way_analysis_applied",]` to the dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on mouse weight over time (Table `r TabNum + 4`). The test output showed that all three individual predictors were a statistically significant, while only the two two-way interactions with "Diet" were statistically significant. There was no statistically significant three-way interaction.
+
+```{r table-90-three-way-mixed-anova, include = TRUE, eval = TRUE}
+# Three-way ANOVA
+SubDat[[SubFigNam]][["3-way_ANOVA"]] %>%
+  capture.output(.) %>%
+  trimws(.) %>%
+  strsplit(., " ") %>%
+  lapply(., function(yy) {
+    
+    yy[yy != ""]
+  }) %>%
+  .[c(6:12)] %>%
+  lapply(., function(zz) {
+    
+    zz %>%
+      as.data.frame(.) %>%
+      t(.) %>%
+      as.data.frame(.)
+  }) %>%
+  bind_rows(.) %>%
+  set_colnames(c("Predictor", "value", "p.value")) %>%
+  tibble::remove_rownames(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 90**"),
+      subtitle = md("**Robust three-way mixed ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+We looked for main effects by splitting the data by te within-subject factor ("Time_point") and analyzed the remaining two predictor ("Diet" and "Roue") by a `r SubDat[[SubFigNam]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. The results showed that both predictors, "Diet" and "Route", produced statistically significant p-values. While "Diet" had always statistical significance with the exception of "Week_0", which was unsurprising considering the large gap in body weight between well-nourished and malnourished mice otherwise throughout the observation period (Fig. 3a). "Route" was only a statistically significant predictor between "Week_9" and "Week_17", and the interaction term was statistically significant between "Week_7" and "Week_18" (Table `r TabNum + 5`). This suggested that the effects of the Route" of infection were only observed for a limited period of time post infection, while the effects of "Diet" were predefined at the point of infection. The interaction suggests that within one or both dietary groups statistically significant differences were observed due to infection route.
+
+```{r table-91-two-way-anova, include = TRUE, eval = TRUE}
+# Two-way ANOVA
+SubDat[[SubFigNam]][["2-way_ANOVA_post_hoc"]] %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt(rowname_col = "Time_point") %>%
+    tab_stubhead(label = "Weeks p.i.") %>%
+    tab_header(
+      title = md("**Appendix Table 91**"),
+      subtitle = md("**Robust two-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = "Post-Infestion",
+      rows = c((SubDat[[SubFigNam]][["2-way_ANOVA_post_hoc"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.) + 1):
+                 (SubDat[[SubFigNam]][["2-way_ANOVA_post_hoc"]] %>% 
+                    nrow(.)))
+    ) %>%
+    tab_row_group(
+      label = "Pre-Infection",
+      rows = c(1:(SubDat[[SubFigNam]][["2-way_ANOVA_post_hoc"]] %>% 
+                    .[.$Time_point == c("Week_0") |
+                      .$Time_point == c("Week_1") |
+                      .$Time_point == c("Week_2") |
+                      .$Time_point == c("Week_3") |
+                      .$Time_point == c("Week_4") |
+                      .$Time_point == c("Week_5") ,] %>%
+                    arrange(Time_point) %>%
+                    nrow(.)))
+    )
+```
+
+For the analysis of the simple simple main effect for each respective between-subject factor, we performed `r SubDat[[SubFigNam]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual between-subject factor of the data split by the other two predictors. The results showed that "Diet" caused statistically significant differences with the exception of "Week_0", which prior to the assignment of special diets (Table `r TabNum + 6`). "Route only showed occasionally statistical significant difference; most commonly between "Week_6" and "Week_18", which was only associated with the malnourished group (Table `r TabNum + 7`).
+
+```{r table-92-one-way-anova, include = TRUE, eval = TRUE}
+# One-way ANOVA
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+  names(.) %>%
+  gsub(".*: ", "", .)
+
+# Data table
+SubDat[[SubFigNam]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+  mapply(function(yy, zz) {
+    
+    yy %>%
+      rename("Factor" = zz, 
+             "CI_lower" = "effsize_ci_lower", 
+             "CI_upper" = "effsize_ci_upper")
+    
+  }, yy = ., zz = c("Diet", "Route"), SIMPLIFY = FALSE) %>%
+  bind_rows(., .id = "Predictor") %>%
+  mutate(., across("Predictor", ~ gsub(".*: ", "", .x))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(Predictor, index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 92**"),
+      subtitle = md("**Robust one-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = paste("Split by", GrpNam[2]),
+      rows = c(70:115)
+    ) %>%
+    tab_row_group(
+      label = paste("Split by", GrpNam[1]),
+      rows = c(1:69)
+    ) %>%
+    cols_hide(columns = c(
+      # CI_lower, 
+      # CI_upper, 
+      # Sig.,
+      Predictor
+      ))
+```
+
+```{r table-93-one-way-anova-diet-sig-only, include = TRUE, eval = TRUE}
+# This table is only for Diet as predictor and only rows with significant p-values
+SubDat[[SubFigNam]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+   mapply(function(yy, zz) {
+    
+    yy %>%
+      rename("Factor" = zz, 
+             "CI_lower" = "effsize_ci_lower", 
+             "CI_upper" = "effsize_ci_upper")
+    
+  }, yy = ., zz = c("Diet", "Route"), SIMPLIFY = FALSE) %>%
+  bind_rows(., .id = "Predictor") %>%
+  mutate(., across("Predictor", ~ gsub(".*: ", "", .x))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  .[.[["p.value"]] <0.05,] %>%
+  .[.$Predictor == "Route",] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(Predictor, index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 93**"),
+      subtitle = md("**Robust one-way ANOVA - sig. summary**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_hide(columns = c(
+      # CI_lower, 
+      # CI_upper, 
+      # Sig.,
+      Predictor
+      ))
+```
+
+For the pairwise comparison, we applied a `r SubDat[[SubFigNam]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. Since the "Diet" predictor only had two factor levels, the output showed the same result as the `r SubDat[[SubFigNam]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` above. For the "Route" predictor, the pairwise comparison presented a more detailed view at where statistically significant differences occurred (Table `r TabNum + 8`). As for the `r SubDat[[SubFigNam]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` above, all statistical significant differences were observed between "Week_6" and "Week_18" and were restricted to the malnourished groups (Table `r TabNum + 9`). The main differences between the malnourished groups resided primarily with the needle inoculated group from "Week_6" to "Week_14", who had more weight gain than either the malnourished control or sand fly infected groups. From "Week_15" onword, the average mouse weight for the malnourished control group approached that or the needle group and statistical differences were now only observed compared to the malnourished sand fly infected group, that never seemed to gain weight post infection.
+
+```{r table-94-pairwise-comparison, include = TRUE, eval = TRUE}
+# Pairwise comparison
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam]][["Pairwise_simple_simple_comparison"]] %>%
+  names(.) %>%
+  gsub(".*: ", "", .)
+
+# Data table
+SubDat[[SubFigNam]][["Pairwise_simple_simple_comparison"]] %>%
+   mapply(function(yy, zz) {
+    
+    yy %>%
+      rename("Factor" = zz)
+    
+  }, yy = ., zz = c("Diet", "Route"), SIMPLIFY = FALSE) %>%
+  bind_rows(., .id = "Predictor") %>%
+  mutate(., across("Predictor", ~ gsub(".*: ", "", .x))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(Predictor, index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 94**"),
+      subtitle = md("**Pairwise comparison by Linear Contrast Expression**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = paste("Split by", GrpNam[2]),
+      rows = c(70:207)
+    ) %>%
+    tab_row_group(
+      label = paste("Split by", GrpNam[1]),
+      rows = c(1:69)
+    ) %>%
+    cols_hide(columns = c(Predictor))
+```
+
+```{r table-95-pairwise-comparison-diet-sig-only, include = TRUE, eval = TRUE}
+# This table is only for Diet as predictor and only rows with significant p-values
+SubDat[[SubFigNam]][["Pairwise_simple_simple_comparison"]] %>%
+   mapply(function(yy, zz) {
+    
+    yy %>%
+      rename("Factor" = zz)
+    
+  }, yy = ., zz = c("Diet", "Route"), SIMPLIFY = FALSE) %>%
+  bind_rows(., .id = "Predictor") %>%
+  mutate(., across("Predictor", ~ gsub(".*: ", "", .x))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  .[.[["p.value"]] <0.05,] %>%
+  .[.$Predictor == "Route",] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., "index" = gsub(".*_", "", .$Time_point) %>% 
+           as.numeric(.)) %>%
+  arrange(Predictor, index) %>%
+  dplyr::select(-index) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 95**"),
+      subtitle = md("**Pairwise comparison by Linear Contrast Expression - sig. summary**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+
+## Conclusion
+
+In conclusion, that "Diet" was the most potent predictor for mouse weight gain over time. Interestingly, between the well-nourished groups, we never observed statistically significant weight gains over time, suggesting that in that state, and conversely to the malnourished mouse groups, mouse weight was not affected by infection status or "Route" in well-nourished mice. These data support the hypothesis that the nutritional state of an individual can directly impact their weight before and during *Leishmania donovani* infection.
+
+```{r update-table-number-figure-3a}
+TabNum <- TabNum + 9
+```

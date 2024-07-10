@@ -1,0 +1,459 @@
+---
+title: "Figure 3e"
+author: "Johannes S. P. Doehl"
+date: "2024-06-20"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-3e, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-3e}
+# Figure name
+FigNam <- "Figure 3e"
+
+# Tissue name
+TisNam <- ResC2 %>%
+  .[names(.) %like% FigNam] %>%
+  names(.) %>%
+  gsub(".*- ", "", .)
+
+# Subset data that applies to this figure
+SubDat <- ResC2 %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(TisNam)
+
+# Total mice used
+TotN <- DatC2Spt %>%
+  .[names(.) %like% FigNam] %>%
+  lapply(., function(qq) {
+    sum(qq)
+  }) %>%
+  purrr::set_names(TisNam) %>%
+  unlist(.)
+
+# Total N per group
+GrpN <- lapply(DatC2Spt %>%
+                 .[names(.) %like% FigNam], function(xx) {
+    
+    colSums(xx)
+    
+  }) %>%
+  purrr::set_names(TisNam) %>%
+  bind_rows(., .id = "Tissue") %>%
+  tibble::column_to_rownames(., var = "Tissue")
+
+# Subset power calculation that applies to this figure
+SubPwr <- PwrCalC2 %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(TisNam)
+```
+
+## Data analysis
+
+We analysed the frequency of *Leishmania donovani* dissemination to several different tissues (brain, ears, eyes, liver, paw and spleen) in a total in a varying total *N* of well-nourished (WN) and malnourished (MN) BALB/c mice infected intradermally either by "needle" injection or sand fly bite (SF) by contingency table analysis and logistic regression (Appendix table `r TabNum + 1`). These are the same animals as presented in figure 3d. These analyses permitted looking at our data from another angle to fully comprehend the impact of infection route and state of nourishment. 
+
+```{r table-110-sample-size, include = TRUE, eval = TRUE}
+# sample size table
+cbind(TotN, GrpN) %>%
+  rename("Total N" = "TotN") %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Tissue") %>%
+    tab_header(
+      title = md("**Appendix Table 110**"),
+      subtitle = md("**Sample size**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+### Contingency table
+
+Due to the small sample sizes in most datasets, there were several expected counts <5, why we opted for the Fisher's Exact test, which had the added benefit of exact p-value calculation, for all tissues except the spleen, where the sample size was much larger and a Chi-square test was applied. Only the spleen showed a statistical significant difference (Appendix table `r TabNum + 2`). 
+
+```{r table-111-contingency-analysis, include = TRUE, eval = TRUE}
+# Main contingency table analysis by tissue
+mapply(function(zz, yy) { # This gest the essential data from either test
+  
+  if (yy == "Fisher's Exact test") {
+    
+    zz[["Fisher's Exact test"]]
+    
+  } else if (yy == "Chi-square test") {
+    
+    zz[["Chi-square test"]] %>%
+      dplyr::select("n", "p", "p.signif")
+  }
+}, zz = SubDat, 
+   yy = lapply(SubDat, function(qq) {
+          names(qq)[1]
+          }) %>%
+          bind_rows(., .id = "Tissue"), 
+   SIMPLIFY = TRUE) %>%
+  t(.) %>%
+  as.data.frame(.) %>%
+  merge(., 
+        sapply(SubDat, function(qq) { # This adds the executed test name
+          names(qq)[1]
+          }) %>%
+          as.data.frame(.) %>%
+          rename("Test" = "."),
+        by = "row.names", 
+        all = TRUE) %>%
+  tibble::column_to_rownames("Row.names") %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(round(.x, 4), scientific = FALSE)))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Tissue") %>%
+    tab_header(
+      title = md("**Appendix Table 111**"),
+      subtitle = md("**Contingency table analyses**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) 
+```
+
+Interestingly, the pairwise comparison did not show any statistical significant difference, even before adjusting p-values for multiple comparisons (Appendix table `r TabNum + 3`), suggesting that there is no difference between groups within any tissue in terms of dissemination success. 
+
+```{r table-112-pairwise-comparison, include = TRUE, eval = TRUE}
+# Table of pairwise comparisons split by tissue
+lapply(SubDat, function(zz) {
+  
+  zz[[2]] %>%
+    as.data.frame(.) %>%
+    dplyr::select(-any_of(c("conf.low", "conf.high", "method", "alternative", "df"))) %>%
+    rename(any_of(c("estimate" = "statistic")))
+  
+}) %>%
+  bind_rows(., .id = "Tissue") %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  unite(., col = "group", starts_with("group"), sep = " - ", remove = TRUE, na.rm = FALSE) %>%
+  merge(., 
+        rep(sapply(SubDat, function(qq) { # This adds the executed test name
+          names(qq)[1]
+          }), each = 3) %>%
+          as.data.frame(.) %>%
+          rename("Test" = "."),
+        by = "row.names", 
+        all = TRUE) %>%
+  tibble::column_to_rownames("Row.names") %>%
+  unite(., col = "Tissue", c("Tissue", "Test"), sep = " - ", remove = TRUE, na.rm = FALSE) %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 112**"),
+      subtitle = md("**Pairwise comparison**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) 
+```
+
+Conversely, looking at the odds ratios, then malnourished, sand fly inoculated mice were significantly more likely to experience parasite dissemination to the spleen than malnourished, needle inoculated mice (Appendix table `r TabNum + 4`).
+
+```{r table-113-odds-ratios, include = TRUE, eval = TRUE}
+lapply(SubDat, function(qq) {
+  
+  cbind(qq[["Odds Ratios"]][["measure"]],
+        "p.value" = qq[["Odds Ratios"]][["p.value"]][,"fisher.exact"]) %>%
+    as.data.frame(.) %>%
+    tibble::rownames_to_column(., var = "factor")
+}) %>%
+  bind_rows(., .id = "Tissue") %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across("sig.", ~ ifelse(.x == "?", NA, .x))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "factor") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 113**"),
+      subtitle = md("**Odds Ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+However, applying a retrospective statistical power calculation showed that the sample size for most tissue was to small to detect a meaningful difference here and thus, our statistical power was well below the standard 80% for all tissues (Appendix table `r TabNum + 5`), but larger sample sizes were prohibitive due to cost and loss of life. 
+
+```{r table-114-power-calculation, include = TRUE, eval = TRUE}
+# Subset data that applies to this figure
+lapply(SubPwr, function(qq) {
+    
+    qq %>%
+      tibble::rownames_to_column(., var = "Parameters")
+  
+  }) %>%
+  bind_rows(., .id = "Tissue") %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Parameters") %>%
+    tab_stubhead(label = "Parameters") %>%
+    tab_header(
+      title = md("**Appendix Table 114**"),
+      subtitle = md("**Retrospective Power Calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_spanner(
+      label = "Calculation for",
+      columns = c("Sample size", "Statistical power")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Sample size",
+        rows = Parameters == "Total n")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Statistical power",
+        rows = Parameters == "Statistical power")
+    )
+```
+
+The problem of the small and unequal sample sizes between groups became evident when we looked at the contingency table (Appendix table `r TabNum + 6`). Small counts in most cells, makes these analyses not very robust. But it needs to be noted that malnourished, sand fly inoculated mice experienced more frequently dissemination of parasites to other tissues than well-nourished, sand fly inoculated and malnourished needle inoculated mice. The latter had generally the lowest frequency of dissemination event, suggesting that a) parasite inoculation by sand fly bite increases the frequency of parasite dissemination, and that b) in the context of sand fly inoculation, malnourishment seems to further exacerbate the frequency of parasite dissemination.
+
+```{r table-115-event-occurrences, include = TRUE, eval = TRUE}
+lapply(DatC2Spt %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(TisNam), function(qq) {
+    qq %>%
+      tibble::rownames_to_column(., var = "Dissemination")
+  }) %>%
+  bind_rows(., .id = "Tissue") %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Dissemination") %>%
+    tab_stubhead(label = "Dissemination") %>%
+    tab_header(
+      title = md("**Appendix Table 115**"),
+      subtitle = md("**Odds Ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = everything(),
+        rows = Dissemination == "YES")
+    )
+```
+
+
+### Logistic regression
+
+```{r logistic-regression-summary-figure-3e}
+# Subset data for the figure panel
+SubDat <- ResLgR %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(TisNam)
+
+# Subset power calculation that applies to this figure
+SubPwr <- PwrCalLgR %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(TisNam)
+```
+
+We applied a logistic regression model to the same data and assessed the two predictor variables "Diet" and "Route" without an interaction term to assess individual predictor contribution to the outcome. The data output showed that infection by sand fly bite ("Route") was the statistically significant compared to needle inoculation only for the spleen. Malnourishment was close to being statistically significantly different from well-nourishment for the spleen, too. For all other tissues, there was no statistical significance observed (Appendix table `r TabNum + 7`).
+
+```{r table-116-logistic-regression, include = TRUE, eval = TRUE}
+lapply(SubDat, function(zz) {
+  zz %>%
+    .[["Model_summary"]] %>%
+    tibble::rownames_to_column(., var = "Factors")
+  }) %>%
+  bind_rows(., .id = "Tissue") %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Factors") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 116**"),
+      subtitle = md("**Logistic regression output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+The odds ratios were nonsensical for eye and liver here (Appendix table `r TabNum + 8`), as they were for the contingency table analysis (Appendix table `r TabNum + 4`). Looking at the spleen, the infection route had a bigger impact on parasite dissemination than diet, although either odds ratio was statistically significant according to the 95% confidence intervals. For all other tissues, we did not obtain statistical significnace.
+
+```{r table-117-odds-ratio, include = TRUE, eval = TRUE}
+lapply(SubDat, function(zz) {
+  zz %>%
+    .[["Odds_ratios"]] %>%
+    tibble::rownames_to_column(., var = "Factors")
+  }) %>%
+  bind_rows(., .id = "Tissue") %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 1000 & .x > 0.0001 | .x == 0, 
+                                               format(round(.x, 3), scientific = FALSE), 
+                                               format(.x, digits = 3)))) %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Factors") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 117**"),
+      subtitle = md("**Odds Ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) 
+```
+
+The Wald test confirmed the logistic regression result, stating that only the infection route was statistically significant for the spleen, with "Diet" close to reaching statistical significance (Appendix table `r TabNum + 9`).
+
+```{r table-118-wald-test, include = TRUE, eval = TRUE}
+lapply(SubDat, function(qq) {
+  qq %>%
+    .[["Wald_test"]] %>%
+    lapply(., function(zz) {
+      zz[["result"]][["chi2"]]
+      }) %>%
+    bind_rows(., .id = "Predictor")
+  }) %>%
+  bind_rows(., .id = "Tissue") %>%
+  mutate(., "sig." = .[["P"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 0.0001, "<0.0001", format(round(.x, 4), scientific = FALSE)))) %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictor") %>%
+    tab_header(
+      title = md("**Appendix Table 118**"),
+      subtitle = md("**Wald test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) 
+```
+
+However, although, in general, there was no statistically significance in the logistic regression model with the exception of the infection route in the spleen that did not mean that there was no meaningful biological effect. A retrospective sample size and power calculation with the study data showed that the study was well underpowered for the logistic regression for all tissues (Appendix table `r TabNum + 10`), as it had already been shown for the contingency table analysis (Appendix table `r TabNum + 5`). But larger sample sizes, in particular, as inidcated by the sample size calculation, were prohibitive due to cost and loss of life.
+
+```{r table-119-power-calculation, include = TRUE, eval = TRUE}
+SubPwr %>%
+  bind_rows(., .id = "Tissue") %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictor") %>%
+    tab_header(
+      title = md("**Appendix Table 119**"),
+      subtitle = md("**Retrospective power analyses**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "TotalN",
+        rows = Calculation == "Sample_size")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Power",
+        rows = Calculation == "Power")
+    )
+```
+
+Even so, there was a good indication of potential biological significance. Considering the predicted probability of parasite dissemination for most tissues, it can be seen that being malnourished and inoculated by a sand fly increased the probability of parasite dissemination for most tissue beyond the other conditions (Appendix table `r TabNum + 11`). With exception of the spleen, the large confidence intervals did not render statistical significance in all other tissues, which does not exclude biological significance, though.
+
+```{r table-120-probability, include = TRUE, eval = TRUE}
+lapply(SubDat, function(zz) {
+  zz %>%
+    .[["Probability"]] %>%
+    tibble::rownames_to_column(., var = "Factors")
+  }) %>%
+  bind_rows(., .id = "Tissue") %>%
+  group_by(Tissue) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 120**"),
+      subtitle = md("**Predicted probability of parasite dissemination**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Predicted_Probability")
+    )
+```
+
+
+```{r update-table-number-figure-3e}
+TabNum <- TabNum + 11
+```

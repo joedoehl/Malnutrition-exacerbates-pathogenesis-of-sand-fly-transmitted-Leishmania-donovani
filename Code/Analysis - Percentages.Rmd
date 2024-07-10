@@ -1,0 +1,416 @@
+---
+title: "Percentage Data Analysis"
+author: "Johannes S. P. Doehl"
+date: "2024-05-24"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-percentage-data, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r collate-percentage-data-for-regression-analysis-from-RawDat}
+# Extract dataframes containing percentage data
+DatPct <- RawDat[names(RawDat) %like% "Arcsin"]
+
+# Split dataframe containing multiple tissue data into separate dataframes for analysis
+DatPctSpt <- mapply(function(qq, rr) {
+  
+  if (nlevels(qq$Tissue) > 1) {
+    
+    xxx <- split(qq, qq$Tissue) %>%
+      
+      lapply(., function(ww) {
+        
+        droplevels(ww)
+        })
+    
+    xxx %>%
+      purrr::set_names(paste(rr, names(xxx), sep = " - "))
+    
+  } else {
+    
+    list(qq)
+  }
+}, qq = DatPct, rr = names(DatPct), SIMPLIFY = FALSE) %>%
+  flatten(.)
+
+DatPctSptInt <- lapply(DatPctSpt, function(zz) {
+  
+  zz %>%
+    mutate(., across("Percent", ~ round(.x * 10, 0)))
+})
+
+DatPctSptBet <- lapply(DatPctSpt, function(zz) {
+  
+  zz %>%
+    mutate(., across("Percent", ~ (.x + 0.01) / 100))
+})
+```
+
+```{r regression-models-for-percentage-data}
+# The regression models I want to run
+RegMods <- c("poisson", "negative_binomial", "beta_regression")
+
+# Analyzes data of experiments
+ResPct <- mapply(function(aa, bb, zz) {
+  
+  # Remove factors with only one level
+  aa <- aa[, sapply(aa, function(ww) {
+    
+    if (is.factor(ww)) {
+      
+      nlevels(ww)
+      
+    } else {
+      
+      2
+    }
+  }) > 1]
+  
+  # Remove factors with only one level
+  bb <- bb[, sapply(bb, function(ww) {
+    
+    if (is.factor(ww)) {
+      
+      nlevels(ww)
+      
+    } else {
+      
+      2
+    }
+  }) > 1]
+  
+  # Apply regression models
+  lapply(RegMods, function(dd) {
+    
+    if (dd == "poisson") {
+      
+      # Poisson regression model
+      Mod <- glm(formula = as.formula(
+        paste0("Percent ~ ",
+               paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                     collapse = " * "))), 
+        family = poisson,
+        data = aa)
+      
+    } else if (dd == "negative_binomial") {
+          
+      # Negative Binomial regression model
+      Mod <- MASS::glm.nb(formula = as.formula(
+        paste0("Percent ~ ",
+               paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                     collapse = " * "))),
+        data = aa)
+          
+    } else {
+            
+      # Beta regression model
+      Mod <- betareg::betareg(formula = as.formula(
+        paste0("Percent ~ ",
+               paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(bb)],
+                     collapse = " * "))),
+        data = bb)
+            
+    }
+    
+    
+    # Post hoc analyses
+    if (dd != "beta_regression") {
+      
+      # Replaced the data entry in the formula, with something the nagelkerke() function can call as "aa" is not recognized
+      Mod[["call"]][["data"]] <- parse(text = paste0("DatPctSptInt[[", zz, "]]"))[[1]]
+      Mod[["call"]][["formula"]] <- parse(text = paste0("Percent ~ ",
+               paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                     collapse = " * ")))[[1]]
+      
+      
+      # ANOVA to assess predictor strength
+      if (length(Mod[["formula"]][[3]]) == 1 | length(Mod[["terms"]][[3]]) == 1) { # Checks if >1 predictor was used
+        
+        # ANOVA of model to determine significance of predictor variable          
+          AovMod <- car::Anova(Mod,
+                               type = "II")
+        
+      } else { # For significant interaction
+        
+        if (summary(Mod)$coef[4, "Pr(>|z|)"] < 0.05) { # Checks for statistically significant interaction
+          
+          # ANOVA of model to determine significance of predictor variable          
+          AovMod <- car::Anova(Mod,
+                               type = "III")
+          
+        } else {
+          
+          # ANOVA of model to determine significance of predictor variable          
+          AovMod <- car::Anova(Mod,
+                               type = "II")
+        }
+      }
+      
+    
+      # Calculates dispersion ratio
+      DispTest2 <- performance::check_overdispersion(Mod)
+    
+    
+    } else { # For betareg() output
+      
+      Mod[["call"]][["data"]] <- parse(text = paste0("DatPctSptBet[[", zz, "]]"))[[1]]
+      Mod[["call"]][["formula"]] <- parse(text = paste0("Percent ~ ",
+               paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(bb)],
+                     collapse = " * ")))[[1]]
+      
+      # ANOVA to assess predictor strength
+      if (length(Mod[["formula"]][[3]]) == 1 | length(Mod[["terms"]][[3]]) == 1) { # Checks if >1 predictor was used
+        
+        # ANOVA of model to determine significance of predictor variable          
+          AovMod <- car::Anova(Mod,
+                               type = "II")
+        
+      } else { # For significant interaction
+        
+        # ANOVA to assess predictor strength
+        if (summary(Mod)$coef$mean[4, "Pr(>|z|)"] < 0.05) {
+          
+          # ANOVA of model to determine significance of predictor variable          
+          AovMod <- car::Anova(Mod,
+                               type = "III")
+          
+        } else {
+          
+          # ANOVA of model to determine significance of predictor variable          
+          AovMod <- car::Anova(Mod,
+                               type = "II")
+        }
+      }
+      
+      # Calculates dispersion ratio
+      DispTest2 <- "Not implemented for betareg"
+    }
+      
+    
+    # Checks validity of proportional hazard assumption
+    tryCatch({lmtest::lrtest(Mod); EM <<- 0}, # In case it throws an error
+               error = function(e) {EM <<- 1});
+    
+      # Likelihood ratio test for model significance !!!!!!!!! gives me trouble !!!!!!!!!!!!!!!!
+      if (EM == 0) {
+        
+        LRT <- lmtest::lrtest(Mod)
+        
+      } else {
+        
+        LRT <- "Error occurred"
+      }
+
+      
+    # Pseudo R^2 generation
+    # Pseudo R-squared measures are relative measures among similar models indicating how well the model explains the data
+    PseudoR2 <- rcompanion::nagelkerke(Mod) %>%
+      .[["Pseudo.R.squared.for.model.vs.null"]] %>%
+      as.data.frame(.) %>%
+      tibble::rownames_to_column(.) %>%
+      .[3,]  
+     
+      
+    # Dispersion statistic to see which model brings dispersion closest to 1
+    E2 <- stats::residuals(Mod, type = "pearson")
+    N  <- nrow(aa)
+    
+    if (dd == "negative_binomial") {
+
+      # For negative binomial regression
+      p  <- length(stats::coef(Mod)) + 1  # '+1' is for variance parameter in NB
+      
+    } else {
+
+      # For Poisson regrassion
+      p  <- length(stats::coef(Mod))
+      
+    }
+
+    DispTest <- sum(E2^2) / (N - p) # Model dispersion
+    
+    
+    print(zz)
+    # Estimated marginal means analysis of the model
+    EmmMod <- emmeans::emmeans(Mod, as.formula(
+      paste0("~ ",
+             paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(aa)],
+                   collapse = " * "))))
+
+      # Pairwise comparison using the estimated marginal means analysis
+      ParMod <- pairs(EmmMod,
+                      adjust = "BH")
+  
+      # Adding a letter code to the estimate marginal means output
+      ResMod <- multcomp::cld(EmmMod,
+                              alpha = 0.05,
+                              Letters = letters,  # Use lower-case letters for .group
+                              adjust = "BH")  # Tukey adjustment for multiple comparisons
+    
+    
+    # Stored output
+    list("Regression model"                      = Mod,
+         "Likelihood ratio test"                 = LRT,
+         "Dispersion test"                       = DispTest,
+         "Dispersion test 2"                     = DispTest2,
+         "ANOVA of model"                        = AovMod,
+         "Pseudo R-square"                       = PseudoR2,
+         "Estimated Marginal Means"              = EmmMod,
+         "Pairwise Comparison of EMMs"           = ParMod,
+         "Pairwise Comparison of EMMs (letters)" = ResMod)
+
+  }) %>%
+      purrr::set_names(RegMods)
+    
+}, aa = DatPctSptInt, bb = DatPctSptBet, zz = c(1:length(DatPctSpt)), SIMPLIFY = FALSE) 
+```
+
+```{r Model-comparison-percentage-data}
+# Compare standard models with one another--------------------------------------
+
+# Get the models for anova comparison
+ModCompPct <- mapply(function(aa, zz) {
+  
+  xxx <- list()
+    
+  lapply(RegMods, function(cc) {
+    
+      xxx <- append(xxx,
+                      list(aa[[cc]][["Regression model"]]))
+    }) %>%
+    purrr::flatten() %>%
+    purrr::set_names(RegMods)
+  
+}, aa = ResPct, zz = c(1:length(ResPct)), SIMPLIFY = FALSE) %>%
+  purrr::set_names(gsub(".Arcsin -*", "", names(ResPct)))
+
+
+# Get the model summaries
+ModSumPct <- lapply(ModCompPct, function(aa) {
+  
+  lapply(aa, function(bb) {
+      
+    summary(bb)
+
+  })
+})
+
+
+# Extract AICs for the different models
+AICPct <- mapply(function(cc, dd) {
+  
+  lapply(names(dd), function(ee) {
+    
+    if (ee == "beta_regression") {
+      
+      AIC(cc[["beta_regression"]])
+      
+    } else {
+      
+      dd[[ee]][["aic"]]
+      
+    }
+  }) %>%
+    purrr::set_names(RegMods)
+  
+}, cc = ModCompPct, dd = ModSumPct, SIMPLIFY = FALSE)
+
+
+# Select the dispersion values closest to one and select its model
+ModSelAICPct <- lapply(AICPct, function(gg) {
+  
+  # Identify the test with has the dispersion closest to 1 
+  names(gg)[which.min(gg)]
+  
+})
+
+
+# Get all the selected model information
+RegModAICPct <- mapply(function(dd, ff) {
+  
+  # Select the best model's output
+  ff[names(ff) %like% dd]
+  
+}, dd = ModSelAICPct, ff = ResPct, SIMPLIFY = FALSE)
+```
+
+```{r dispersion-values-percentage-data}
+# Extract all the dispersion values
+DispFacPct <- lapply(ResPct, function(aa) {
+  
+  # Extract the Dispersion values
+  lapply(aa, function(bb) {
+    
+    bb[["Dispersion test"]]
+
+  }) %>%
+    bind_cols(.) 
+  
+}) %>%
+  # Combine and reformat the dataframe
+  bind_rows(., .id = "Figure") %>%
+  as.data.frame(.) %>%
+  mutate(., across("Figure", ~ gsub(".Arcsin -*", "", .x))) %>%
+  tibble::column_to_rownames("Figure") %>%
+  t(.) %>%
+  as.data.frame(.) %>%
+  tibble::rownames_to_column(var = "Model_Type") 
+
+
+# Select the dispersion values closest to one and select its model
+ModSelDispPct <- lapply(2:ncol(DispFacPct), function(cc) {
+  
+  # Identify the test with has the dispersion closest to 1 
+  DispFacPct[which.min(abs(DispFacPct[[cc]]-1)), "Model_Type"]
+  
+}) %>%
+  purrr::set_names(colnames(DispFacPct)[-1])
+
+
+# Get all the selected model information
+RegModDispPct <- mapply(function(dd, ff) {
+  
+  # Select the best model's output
+  ff[names(ff) %like% dd]
+  
+}, dd = ModSelDispPct, ff = ResPct, SIMPLIFY = FALSE)
+```
+
+```{r assumption-tests-for-percentage-data-model}
+# Normality of model residuals
+ResAssumpPct <- lapply(RegModAICPct, function(aa) {
+  
+  # Shapiro-Wilks test of residuals
+  NormRes <- shapiro_test(stats::residuals(aa[[1]][["Regression model"]])) %>% # Shapiro-Wilks test of model residuals
+    mutate("sig." = ifelse(.$p.value < 0.1, ".",
+                           ifelse(.$p.value <= 0.05, "*",
+                                  ifelse(.$p.value < 0.01, "**",
+                                         ifelse(.$p.value < 0.001, "***",
+                                                ifelse(.$p.value < 0.0001, "****", ""))))))
+    
+  # Data visualization: QQ-plot
+  plotRes <- ggqqplot(stats::residuals(aa[[1]][["Regression model"]]), 
+                      ggtheme = theme_bw(),
+                      scales = "free")
+  
+  # Collate the tests
+  list("Shapiro_Wilks" = NormRes,
+       "QQ_plot"       = plotRes)
+    
+})
+```
+
+
+```{r clean-up-percentage-data-analysis-variables}
+rm(RegMods, ZroInf)
+
+gc()
+```
+

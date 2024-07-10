@@ -186,7 +186,8 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
       
       # Data visualization: QQ-plot
       QQplotUV <- ggpubr::ggqqplot(ExpDat, "Counts", ggtheme = theme_bw()) +
-      facet_grid(Route ~ Diet, labeller = "label_both")
+      facet_grid(Route ~ Diet,
+                 scales = "free")
       
       
     # 1.2 Normality of residuals
@@ -198,7 +199,9 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
       NormRes <- shapiro_test(residuals(Mod))
   
       # Create a QQ plot of residuals
-      QQplotRes <- ggpubr::ggqqplot(residuals(Mod), ggtheme = theme_bw())
+      QQplotRes <- ggpubr::ggqqplot(residuals(Mod), 
+                                    ggtheme = theme_bw(),
+                                    scales = "free")
       
         
     # Skewness and kurtosis check by group (pre-transformation decision)
@@ -463,6 +466,8 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
             adjust_pvalue(method = "BH")
         )
         
+          ResAov1w <- "Standard one-way ANOVA"
+          print(ResAov1w)
         
           # Simple simple pairwise comparison
           res.aovPw <- list(
@@ -479,7 +484,9 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
               rstatix::emmeans_test(Counts ~ Diet,
                                     p.adjust.method = "BH")
           )
-        
+          
+            ResAovPW <- "Estimated marginal means analysis"
+            print(ResAovPW)
           
     } else if (cc == 2) { # Robust two-way ANOVA
       
@@ -507,6 +514,8 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
                                          model = Mod)
         )
         
+          ResAov1w <- "Robust one-way ANOVA"
+          print(ResAov1w)
         
           # Simple simple pairwise comparison
           res.aovPw <- list(
@@ -522,6 +531,8 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
                                             outerLev = "Route")
           )
           
+            ResAovPW <- "Linear contrast expression"
+            print(ResAovPW)
         
     } else if (cc == 3) { # non-parametric alternative for two-way ANOVA
       
@@ -553,8 +564,11 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
                                        adjust = "sidak")
         )
         
-        res.aov2w <- NA
-        res.aov1w <- NA
+          ResAovPW <- "Estimated marginal means analysis"
+          print(ResAovPW)
+        
+        res.aov1w <- "Not applicable for linear regression"
+        ResAov1w <- "Not applicable for linear regression"
     }
   }
       
@@ -567,7 +581,10 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
                                  "Residual_Normality_Assumption"            = ResNormRes,
                                  "Outliers"                                 = ResOutUV,
                                  "Homogeneity_of_Variance"                  = ResEquVar,
-                                 "2-way_ANOVA_Test_applied"                 = ResAov2w)) %>%
+                                 "2-way_ANOVA_Test_applied"                 = ResAov2w,
+                                 "1-way_ANOVA_Test_applied"                 = ResAov1w,
+                                 "Pairwise_comparison_applied"              = ResAovPW
+                                 )) %>%
     setNames(., "Outcome")
   
   # Compile output data list
@@ -591,9 +608,197 @@ Res2w <- lapply(Dat2wSpt, function(bb) {
 }) %>%
   purrr::set_names(names(Dat2wSpt))
 
-# Delete variables that are no longer needed to free memory 
-rm(Dat2w, Dat2wSpt)
-
 gc()
 ```
 
+```{r post-hoc-power-calculation-for-thre-way-anova}
+# Retrospective sample size calculation for 80% power for three-way interaction
+PwrCal2w <- mapply(function(qq, zz) {
+  
+  # Get the names of the predictor variables used in the three-way ANOVA
+  if (any(colnames(zz[["2-way_ANOVA_Type"]]) == "Effect")) { # For standard ANOVA
+    
+    PrdNam <- zz[["2-way_ANOVA_Type"]][c(1:2), "Effect"]
+    AllNam <- zz[["2-way_ANOVA_Type"]][["Effect"]]
+    
+  } else if (any(names(zz[["2-way_ANOVA_Type"]]) == "varnames")) { # For robust ANOVA
+    
+    PrdNam <- zz[["2-way_ANOVA_Type"]][["varnames"]][ !zz[["2-way_ANOVA_Type"]][["varnames"]] %in% "Counts"]
+    AllNam <- zz[["2-way_ANOVA_Type"]] %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        
+        yy[yy != ""]
+      }) %>%
+      .[c(5:7)] %>%
+      lapply(., function(zz) {
+        
+        zz %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      .[["V1"]]
+    
+  } else { # For simple linear regression
+    
+    PrdNam <- rownames(zz[["2-way_ANOVA_Type"]])[!rownames(zz[["2-way_ANOVA_Type"]]) %like% ":" & 
+                                                 !rownames(zz[["2-way_ANOVA_Type"]]) %in% "Residuals"]
+    AllNam <- rownames(zz[["2-way_ANOVA_Type"]])[!rownames(zz[["2-way_ANOVA_Type"]]) %in% "Residuals"]
+  }
+  print(PrdNam)
+  # Convert into list of different combinations of predictor names
+  AllNam <- lapply(AllNam, function(aa) {
+    
+    if (length(strsplit(aa, ":") %>% 
+               unlist(.)) == 1) {
+      
+      aa
+      
+    } else if (length(strsplit(aa, ":") %>%
+                      unlist(.)) == 2) {
+      
+      c(strsplit(aa, ":") %>% 
+         unlist(.),
+        aa)
+      
+    } else {
+      
+      AllNam
+    }
+  })
+  
+  # Get the number of factor levels for each predictors
+  FacLvl <- sapply(PrdNam, function(rr){
+    
+    nlevels(qq[[rr]])
+  }) 
+  
+  # Calculate the total N of animals used in the study
+  totN <- eval(parse(text = paste0("sum(table(", paste(paste0("qq$", names(FacLvl)), collapse = ","), "))")))
+  
+  # DATA PREPARATION
+  ExpDat <- qq %>%
+    dplyr::select(any_of(c("Mouse", "Diet", "Route", "Cell_type", "Time_point", "Counts", "Weight_g"))) %>%
+    rename(any_of(c(Counts = "Weight_g"))) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    droplevels(.) %>%
+    mutate(across(where(is.character), as.factor))
+  
+  # Simple linear model for three-way ANOVA
+  ModCont <- lm(as.formula(paste("Counts ~", paste(PrdNam, collapse = " * "))), 
+   data = ExpDat,
+   contrasts = list(
+     Diet = "contr.sum",
+     Route = "contr.sum",
+     Time_point = "contr.sum"
+     )
+   )
+  
+  # Get partial effect sizes
+  EffSiz <- effectsize::eta_squared(car::Anova(ModCont, type = 3), partial = TRUE)
+  
+  # Perform retrospective power calculation
+  SmplSize <- mapply(function(uu, tt, ss) {
+    
+    pwrss::pwrss.f.ancova(eta2 = uu, 
+                          n.levels = FacLvl[tt], 
+                          alpha = 0.05, 
+                          power = 0.8) %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        yy[yy != ""]
+      }) %>%
+      { if (length(tt) == 1) {
+        .[8]
+        } else if (length(tt) == 2) {
+          .[c(9:11)]
+        } else {
+          .[c(10:16)]
+        }
+      } %>%
+      lapply(., function(xx) {
+        tail(xx, 5) %>% 
+        lapply(., function(vv) {
+          vv[vv != ""]
+        }) %>%
+        lapply(., function(ww) {
+          ww %>%
+            as.data.frame(.) %>%
+            t(.) %>%
+            as.data.frame(.)
+        }) %>%
+          bind_cols(.) 
+      }) %>%
+      bind_rows(.) %>%
+      set_colnames(c("power", "n.total", "ncp", "df1", "df2")) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., "effect" = ss, .before = "power")
+  }, uu = EffSiz$Eta2_partial, 
+     tt = lapply(EffSiz$Parameter, function(rr) {
+       strsplit(rr, ":") %>% 
+         unlist(.)
+    }), 
+     ss = AllNam,
+     SIMPLIFY = FALSE) %>%
+    purrr::set_names(EffSiz$Parameter)
+  
+  # Perform retrospective power calculation
+  RtrPwr <- mapply(function(uu, tt, ss) {
+    
+    pwrss::pwrss.f.ancova(eta2 = uu, 
+                          n.levels = FacLvl[tt], 
+                          alpha = 0.05, 
+                          n = totN) %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        yy[yy != ""]
+      }) %>%
+      { if (length(tt) == 1) {
+        .[8]
+        } else if (length(tt) == 2) {
+          .[c(9:11)]
+        } else {
+          .[c(10:16)]
+        }
+      } %>%
+      lapply(., function(xx) {
+        tail(xx, 5) %>% 
+        lapply(., function(vv) {
+          vv[vv != ""]
+        }) %>%
+        lapply(., function(ww) {
+          ww %>%
+            as.data.frame(.) %>%
+            t(.) %>%
+            as.data.frame(.)
+        }) %>%
+          bind_cols(.) 
+      }) %>%
+      bind_rows(.) %>%
+      set_colnames(c("power", "n.total", "ncp", "df1", "df2")) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., "effect" = ss, .before = "power")
+  }, uu = EffSiz$Eta2_partial, 
+     tt = lapply(EffSiz$Parameter, function(rr) {
+       strsplit(rr, ":") %>% 
+         unlist(.)
+    }), 
+     ss = AllNam,
+     SIMPLIFY = FALSE) %>%
+    purrr::set_names(EffSiz$Parameter)
+  
+  # Output data
+  list("Effect_Size" = EffSiz,
+       "Sample_Size_for_80%_Power" = SmplSize,
+       "Statistical_Power_of_Data" = RtrPwr)
+  
+}, qq = Dat2wSpt, zz = Res2w, SIMPLIFY = FALSE) 
+```

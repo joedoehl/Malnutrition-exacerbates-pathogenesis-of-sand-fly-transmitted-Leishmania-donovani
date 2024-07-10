@@ -1,0 +1,129 @@
+---
+title: "Figure 3b"
+author: "Johannes S. P. Doehl"
+date: "2024-06-20"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-3b, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-3b}
+# Figure name
+FigNam <- "Figure 3b"
+
+# Subset data that applies to this figure
+SubDat <- ResC2 %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::flatten(.)
+
+# Total mice used
+TotN <- SubDat[["Odds Ratios"]][["data"]]["Total", "Total"]
+
+# Subset power calculation that applies to this figure
+SubPwr <- PwrCalC2 %>%
+  .[names(.) %like% FigNam]
+```
+
+## Data analysis
+
+We analysed a total of *N*=`r TotN` well-nourished (WN) and malnourished (MN) BALB/c mice for the frequency of a >=20% weight loss post-intradermal *Leishmania donovani* infection either by "needle" injection or sand fly bite (SF) (*N*: `r paste(paste(SubDat[["Odds Ratios"]][["data"]][1:4, "Total"] %>% names(.), SubDat[["Odds Ratios"]][["data"]][1:4, "Total"], sep = "="), collapse = ", ")`) by contingency table analysis and logistic regression.
+
+### Contingency table
+
+Due to the small sample sizes of some groups, there were several expected counts <5, why we opted for the Fisher's Exact test, which had the added benefit of exact p-value calculation. The analysis rendered a p-value of `r SubDat[["Fisher's Exact test"]][,"p"]`, suggesting `r if (SubDat[["Fisher's Exact test"]][,"p"] < 0.05) { "a statistically significant" } else { "no statistically significant" }` difference between groups. This was confirmed by the pairwise Fisher's Exact test corrected by the Benjamin-Hochberg method, although the only statistically significant difference was observed for well-nourished and malnourished sand fly infected mice (Appendix table `r TabNum + 1`). 
+
+```{r table-96-contingency-analysis, include = TRUE, eval = TRUE}
+SubDat[["Pairwise Fisher's Exact test"]] %>%
+  dplyr::select(-any_of("method")) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 96**"),
+      subtitle = md("**Pairwise Fisher's Exact test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) 
+```
+
+The observed odds ratios suggested that well-nourished BALB/c mice had a 0-fold likelihood of developing a >=20% weight loss due to *L. donovani* infection, regardless of the infection route (Appendix table `r TabNum + 2`). Conversely, malnourished animals did develop the weight loss post infection. Although the malnourished mice infected by sand fly bite, did show an increase a greater occurrence rate of >=20% weight loss compared to needle inoculated mice, that difference did not achieve statistical significance. Th retrospective sample and power calculations showed that our sample was sufficiently large enough at the total *N* to have sufficient power, the fact that the sample size per group were not equal (WN_needle only contained 10 mice) affected the actual test power (Appendix table `r TabNum + 3`). Either way, the contingency analysis suggested that "Diet", rather than infection "Route" was key in the occurrance of critical weight loss post infection.
+
+```{r table-97-odds-ratios, include = TRUE, eval = TRUE}
+cbind(SubDat[["Odds Ratios"]][["measure"]], 
+      "p.value" = SubDat[["Odds Ratios"]][["p.value"]][,"fisher.exact"]) %>%
+  as.data.frame(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 97**"),
+      subtitle = md("**Odds Ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-98-power-calculation, include = TRUE, eval = TRUE}
+PwrCalC2 %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Parameters") %>%
+    tab_header(
+      title = md("**Appendix Table 98**"),
+      subtitle = md("**Retrospective Power Calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_spanner(
+      label = "Calculation for",
+      columns = c("Sample size", "Statistical power")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Sample size",
+        rows = "Total n")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Statistical power",
+        rows = "Statistical power")
+    )
+```
+
+### Logistic regression
+
+Due to the lack of events in the well-nourished group, logistic regression was not possible here as it rendered nonsensical data due to its dependence on the maximum likelihood estimation, which rendered an infinite estimate under these circumstance.
+
+
+```{r update-table-number-figure-3b}
+TabNum <- TabNum + 3
+```

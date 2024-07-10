@@ -1,0 +1,26 @@
+---
+title: "Main Body"
+author: "Johannes S. P. Doehl"
+date: "2024-06-07"
+output: pdf_document
+bibliography: references.bib
+---
+
+```{=comment}
+# Setup
+```
+```{r setup-main-body, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+## Software and packages
+
+```{r package-citations, include = TRUE, eval = TRUE}
+PackUsedPara <- grateful::cite_packages(output = "paragraph", out.dir = ".")
+```
+
+All the statistics presented in the manuscript "`r StudTtl`" and in this appendix were produced in RStudio version `r RStudio.Version()$version` [@team2023]. `r PackUsedPara`[^1] For the creation of this appendix, the author made use of Rmarkdown [@allaire2024]. The original codes for this appendix are available as Rmarkdown files through the author's [github portal](https://github.com/joedoehl/Malnutrition-exacerbates-pathogenesis-of-sand-fly-transmitted-Leishmania-donovani.git).
+
+[^1]: R package citations were managed using the 'grateful' package [@grateful], while inter-package function name conflicts were managed with the 'conflicted' package [@conflicted]

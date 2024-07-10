@@ -1,0 +1,18 @@
+---
+title: "Summary"
+author: "Johannes S. P. Doehl"
+date: "2024-06-07"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-summary, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+# Summary
+

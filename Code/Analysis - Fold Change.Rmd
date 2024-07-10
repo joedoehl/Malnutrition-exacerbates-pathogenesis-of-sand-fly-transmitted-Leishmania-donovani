@@ -17,47 +17,57 @@ DatFC <- RawDat[names(RawDat) %like% "FC"]
 ```
 
 ```{r data-wrangling-for-fold-change-analysis}
-#
+# Data extraction and normalization against WN Ctrl
 DatFC <- lapply(DatFC, function(qq) {
   
+  # Normalize house-keeping gene (Hsp90) readings to normalize the loading control
   NormFact <- lapply(unique(qq[["Exp_Rep"]]), function(rr) {
     
+    # Pull out the reading for Hsp90 for each repeat
     RefFact <- qq %>%
-      dplyr::filter(Exp_Rep == rr, Diet == "WN", Route == "CTRL") %>%
+      dplyr::filter(Exp_Rep == 1, Diet == "WN", Route == "CTRL") %>%
       .[["Hsp90"]]
     
+    # Normalize loading controls by dividing all Hsp90 readings by dividing them with the WN Ctrl Hsp90 reading for each repeat, respectively
     qq %>%
       dplyr::filter(Exp_Rep == rr) %>%
        {RefFact / .[["Hsp90"]]}
     
   }) %>%
+    # Create a vector out of the normalized readings
     purrr::flatten(.) %>%
     bind_cols(.) %>%
     t(.) %>%
     as.vector(.)
   
+  # Add normalized loading control for each lane and normalize HO-1 readings 
   qq <- qq %>%
     arrange(by_group = Exp_Rep) %>%
     mutate(., Norm_factor = NormFact) %>%
-    mutate(., Norm_value = .$`HO-1` * .$Norm_factor)
+    mutate(., Norm_value = .$`HO-1` * .$Norm_factor) # HO-1 loading normalization
   
+  # Calculate fold difference compared to WN Ctrl
   FoldDiff <- lapply(unique(qq[["Exp_Rep"]]), function(rr) {
     
+    # Extract normalized WN Ctrl HO-1 readings for each repeat
     RefFact <- qq %>%
       dplyr::filter(Exp_Rep == rr, Diet == "WN", Route == "CTRL") %>%
       .[["Norm_value"]] %>%
       as.vector(.)
     
+    # Normalize loading controls by dividing all HO-1 readings by dividing them with the WN Ctrl HO1 reading for each repeat, respectively
     qq %>%
       dplyr::filter(Exp_Rep == rr) %>%
        .[["Norm_value"]] / RefFact
     
   }) %>%
+    # Create a vector out of the normalized readings
     purrr::flatten(.) %>%
     bind_cols(.) %>%
     t(.) %>%
     as.vector(.)
   
+  # Expand data table and calculate the log2 fold change
   qq <- qq %>%
     arrange(by_group = Exp_Rep) %>%
     mutate(., Fold_diff = FoldDiff) %>%
@@ -87,7 +97,7 @@ ResFC <- lapply(DatFC, function(bb) {
   for (xx in 1:100) {
   
   # Make decision about data transformation   
-  dd <- readline("Select statistical test to run based on assumption tests:
+  dd <- readline("Select statistical test:
                   0 = Exist loop
                   1 = Standard onw-way ANOVA
                   2 = Welch's one-way ANOVA

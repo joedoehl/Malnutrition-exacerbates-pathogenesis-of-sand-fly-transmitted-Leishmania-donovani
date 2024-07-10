@@ -1,0 +1,320 @@
+---
+title: "Figure 3c"
+author: "Johannes S. P. Doehl"
+date: "2024-07-02"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-3c, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-3c}
+# Figure name
+FigNam <- "Figure 3c"
+
+# Subset data that applies to this figure
+SubDat <- ResSur %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]]
+
+# Total N
+TotN <- DatSur %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  nrow(.)
+
+# Group N
+GrpN <- table(DatSur %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .$Diet_Route) %>%
+  paste(names(.), ., sep = "=", collapse = ", ")
+```
+
+Here, we analyzed the occurrence of ocular pathology following *Leishmania donovani* infection in well-nourished (WN) and malnourished (MN) BALB/c mice. A total of *N*=`r TotN` BALB/c mice (`r GrpN`) were examined on a weekly bases post infection by either "needle" or sand fly (SF) route and occurrence of pathology was recorded as time-to-event data. 
+
+#### Survival analysis
+
+The data was analyzed by the Mantel-Haenszel's log-rank test by use of the survdiff() function from the survival package in R. The test output is shown in table `r TabNum + 1`, which was statistically significant (F(`r length(SubDat[["Survival"]][["obs"]]) - 1`)=`r round(SubDat[["Survival"]][["chisq"]], 2)`, `r if (SubDat[["Survival"]][["pvalue"]] < 0.0001) { "<0.0001" } else { format(round(SubDat[["Survival"]][["pvalue"]], 4), scientific = FALSE) }`).
+
+```{r table-99-mantel-haenszel-s-log-rank-test, include = TRUE, eval = TRUE}
+# Mantel-Haenszel log-rank test
+cbind("N" = SubDat[["Survival"]][["n"]], 
+      "Observed" = SubDat[["Survival"]][["obs"]],
+      "Expected" = SubDat[["Survival"]][["exp"]],
+      "(O-E)^2/E" = (SubDat[["Survival"]][["obs"]] - 
+                     SubDat[["Survival"]][["exp"]])^2 / 
+                     SubDat[["Survival"]][["exp"]],
+      "(O-E)^2/V" = diagonals((SubDat[["Survival"]][["obs"]] - 
+                               SubDat[["Survival"]][["exp"]])^2 / 
+                               SubDat[["Survival"]][["var"]])) %>%
+  as.data.frame(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  set_rownames(str_split(rownames(.), ", ") %>%
+                 lapply(., function(zz) {
+                   gsub(".*=", "", zz) %>%
+                     paste(., collapse = "_") %>%
+                     str_trim(., "right")
+                   }) %>%
+                 unlist(.)) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 99**"),
+      subtitle = md("**Log-rank test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_spanner(
+      label = "Chi-Square",
+      columns = 5
+    ) %>%
+    tab_spanner(
+      label = "log-rank",
+      columns = 6
+    )
+```
+
+The pairwise Mantel-Haenszel' log-rank test, which was adjusted by the Benjamin-Hochberg correction, showed that the malnourished, sand fly inoculated group was statistically significant from all other groups, while there was no statistically significant difference between the remaining three groups (Table `r TabNum + 2`). 
+
+```{r table-100-pairwise-mantel-haenszel-s-log-rank-test, include = TRUE, eval = TRUE}
+# Pairwise log-rank test
+SubDat[["Pairwise"]][["p.value"]] %>%
+  as.data.frame(.) %>% 
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  set_rownames(str_split(rownames(.), ", ") %>%
+                 lapply(., function(zz) {
+                   gsub(".*=", "", zz) %>%
+                     paste(., collapse = "_") %>%
+                     str_trim(., "right")
+                   }) %>%
+                 unlist(.)) %>%
+  set_colnames(str_split(colnames(.), ", ") %>%
+                 lapply(., function(zz) {
+                   gsub(".*=", "", zz) %>%
+                     paste(., collapse = "_") %>%
+                     str_trim(., "right")
+                   }) %>%
+                 unlist(.)) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 100**"),
+      subtitle = md("**Pairwise Log-rank test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+In fact, only malnourished animals developed ocular pathology post infection and the grand majority of these were inoculated by sand fly (Table `r TabNum + 3`), suggesting that sand flies significantly increase the occurrence of ocular pathology in malnourished hosts.
+
+```{r table-101-percent-ocular-pathology-rate, include = TRUE, eval = TRUE}
+cbind(
+  cbind(
+    "Group N" = table(DatSur %>%
+      .[names(.) %like% FigNam] %>%
+      .[[1]] %>%
+      .$Diet_Route),
+      
+    "Ocular Pathology" = table(DatSur %>%
+      .[names(.) %like% FigNam] %>%
+      .[[1]] %>%
+      .$Event, 
+      DatSur %>%
+      .[names(.) %like% FigNam] %>%
+      .[[1]] %>%
+      .$Diet_Route) %>%
+      .["1",]),
+  
+  table(DatSur %>%
+    .[names(.) %like% FigNam] %>%
+    .[[1]] %>%
+    .$Event, 
+    DatSur %>%
+    .[names(.) %like% FigNam] %>%
+    .[[1]] %>%
+    .$Diet_Route) %>%
+    { .["1",] * 100 / table(DatSur %>%
+    .[names(.) %like% FigNam] %>%
+    .[[1]] %>%
+    .$Diet_Route) } %>%
+    as.data.frame.model.matrix(.) %>%
+    mutate(., across(where(is.numeric), ~ format(round(.x, 2), nsmall = 2))) %>%
+    mutate(., across(".", ~ paste0(.x, "%"))) %>%
+    set_colnames("Occurrance Rate") %>%
+    tibble::remove_rownames(.)
+) %>%
+  t(.) %>%
+  as.data.frame(.) %>%
+  .[, c(1,4,2,3)] %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_header(
+      title = md("**Appendix Table 101**"),
+      subtitle = md("**Ocular pathology occurrence rate**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_label(
+      ends_with("Needle") ~ "Needle",
+      ends_with("SF") ~ "Sand fly"
+    ) %>%
+    tab_spanner(
+      label = "Well-nourished",
+      columns = c(2,3)
+    ) %>%
+    tab_spanner(
+      label = "Malnourished",
+      columns = c(4,5)
+    )
+```
+
+#### Cox proportional hazards regression model
+
+```{r cox-proportional-hazards-regression-model-data}
+# Subset data of Cox proportional hazards regression model that applies to this figure
+SubDat <- ResCox %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]]
+```
+
+We also explored the data by Cox proportional hazards regression. Due to the lack of events in the well-nourished group, we had to resort to Firth's penalized maximum likelihood bias reduction method for Cox regression. The output showed that both predictors, "Diet" and "Route", were statistically significant (Table `r TabNum + 4`).
+
+```{r table-102-Cox-PH-model-output, include = TRUE, eval = TRUE}
+# Firth's penalized maximum likelihood bias reduction method for Cox regression 
+summary(ResCox[["Figure 3c KM"]][["Firth's Cox regression (2 var)"]]) %>% 
+  capture.output(.) %>% # make sure your window is wide enough
+  .[c(7:9)] %>%
+  trimws(.) %>%
+  strsplit(., " ") %>%
+  lapply(., function(yy) {
+      
+      yy[yy != ""]
+  }) %>%
+  lapply(., function(zz) {
+      
+      aa <- zz %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      
+      if (length(aa) > 8) {
+        
+        aa %>%
+          unite(., V5, c(V4, V5), sep = " ") %>%
+          unite(., col = V7, c(V6, V7), sep = " ") %>%
+          mutate(., V0 = ".", .before = "V1") %>%
+          set_colnames(paste0("V", seq(1,8)))
+        
+       } else {
+         aa
+       }
+  }) %>%
+  bind_rows(.) %>%
+  janitor::row_to_names(row_number = 1) %>%
+  tibble::remove_rownames(.) %>%
+  tibble::column_to_rownames(., var = ".") %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., "sig." = .[["p"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(round(.x, 4), scientific = FALSE)))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 2))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 102**"),
+      subtitle = md("**Firth's penalized maximum likelihood bias reduction method for Cox regression**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+The odds ratios suggested that "Diet" was a much more potent predictor for ocular pathology, than "Route", although both were statistically significant. Malnourished mice were about `r round(ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]]["DietMN", "AHR"],1)`-times more likely to develop ocular pathology than well-nourished mice compared to sand fly inoculated mice being `r round(ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]]["RouteSF", "AHR"],1)`-times more likely to developed ocular pathology compared to the once inoculated by needle (Table `r TabNum + 5`).
+
+```{r table-103-odds-ratios, include = TRUE, eval = TRUE}
+# Odds ratios
+ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]] %>%
+  mutate(., "sig." = .[["p-value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across("p-value", ~ ifelse(.x < 0.0001, "<0.0001", format(round(.x, 4), scientific = FALSE)))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 2))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 103**"),
+      subtitle = md("**Odds ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+The pairwise comparison clearly confirmed the observation of the log-rank test that the malnourished, sand fly inoculated group was statistically significantly different from the other three groups (Table `r TabNum + 6` and `r TabNum + 7`). Here, the analysis also separated well-nourished needle inoculated mice from the other three groups, which may be due to the small samples.
+
+```{r table-104-pairwise-comaprison, include = TRUE, eval = TRUE}
+# Pariwise comparison by estimated marginal means
+ResCox[["Figure 3c KM"]][["Pairwise comparison (2 var)"]][["Pairwise comparison"]] %>%
+  as.data.frame(.) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(round(.x, 4), scientific = FALSE)))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 2))) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 104**"),
+      subtitle = md("**Pariwise comparison by estimated marginal means**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r table-105-pairwise-comaprison-letters, include = TRUE, eval = TRUE}
+ResCox[["Figure 3c KM"]][["Pairwise comparison (2 var)"]][["Pairwise letter code"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 2))) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 105**"),
+      subtitle = md("**Pariwise comparison by estimated marginal means (letters)**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+
+```{r update-table-number-figure-3c}
+TabNum <- TabNum + 7
+```

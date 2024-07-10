@@ -1,0 +1,1160 @@
+---
+title: "Two-way Analysis of Counts"
+author: "Johannes S. P. Doehl"
+date: "2024-05-23"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-three-way-mixed, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r functions-for-three-way-mixed-analysis}
+# NOTE: the time variable ("Time_point") is used to split the data, thus, the repeated measure aspect is lost for the two-way, one-way and pairwise analysis downstream of the three-way analysis
+
+# Robust two-way ANOVA split by other variables (three-way)
+t2waySplit <- function(Data, indVar, outerLev) {
+  
+  lapply(levels(Data[[outerLev]]), function(xx) {
+    
+    t2way(as.formula(paste("Counts ~", paste(indVar, collapse = " * "))), 
+          data = Data[Data[[outerLev]] %in% xx,], 
+          tr = 0.1) %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        
+        yy[yy != ""]
+      }) %>%
+      .[c(6:8)] %>%
+      lapply(., function(zz) {
+        
+        zz %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      set_colnames(c("Predictor", "value", "p.value"))
+    }) %>%
+    setNames(levels(Data[[outerLev]])) %>%
+    bind_rows(., .id = outerLev) %>%
+    tibble::remove_rownames(.) %>%
+    mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+    mutate(., "Sig." = symnum(.$p.value,
+                              cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                              symbols = c("****", "***", "**", "*", "+", "ns")))
+}
+#-------------------------------------------------------------------------------
+
+# Robust one-way ANOVA split by other variables (three-way)
+t1waySplit <- function(Data, indVar, outerLev, innerLev) {
+  
+  lapply(levels(Data[[outerLev]]), function(xx) {
+    
+    lapply(levels(Data[[innerLev]]), function(yy) {
+      
+      t1way(formula = as.formula(paste("Counts ~", indVar)), 
+            data = Data[Data[[innerLev]] %in% yy & Data[[outerLev]] %in% xx,], 
+            tr = 0.1) %>%
+        append(., split(.$effsize_ci, 
+                        f = c("effsize_ci_lower", "effsize_ci_upper")), 
+               after = 5) %>%
+        .[!names(.) %in% c("effsize_ci", "alpha", "call")]
+    }) %>%
+      setNames(levels(Data[[innerLev]])) %>%
+      lapply(., function(zz) {
+        bind_cols(zz[!names(zz) %in% "call"])
+      }) %>%
+      bind_rows(., .id = innerLev) %>%
+      add_column(Effect = rep(indVar, 
+                              times = length(levels(Data[[innerLev]]))),
+                 .before = "test")
+  }) %>%
+    setNames(levels(Data[[outerLev]])) %>%
+    lapply(., function(ww) {
+      bind_cols(ww[!names(ww) %in% "call"])
+    }) %>%
+    bind_rows(., .id = outerLev) %>%
+    # adjust_pvalue(method = "BH") %>%
+    mutate(., "Sig." = symnum(.$p.value,
+                              cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                              symbols = c("****", "***", "**", "*", "+", "ns")))
+}
+#-------------------------------------------------------------------------------
+
+# Linear contrast expression split by other variables (three-way)
+linconSplit <- function(Data, indVar, outerLev, innerLev) {
+  
+  lapply(levels(Data[[outerLev]]), function(xx) {
+    
+    lapply(levels(Data[[innerLev]]), function(yy) {
+      
+      lincon(formula = as.formula(paste("Counts ~", indVar)), 
+             data = Data[Data[[innerLev]] %in% yy & Data[[outerLev]] %in% xx,], 
+             tr = 0.1,
+             method = "BH")
+    }) %>%
+      setNames(levels(Data[[innerLev]])) %>%
+      lapply(., function(zz) {
+        as.data.frame(zz$comp) %>%
+          set_colnames(make.unique(colnames(.))) %>%
+          mutate(across(grep("Group", colnames(.)),
+                        ~factor(.x,
+                                levels = c(1:nlevels(Data[[indVar]])),
+                                labels = c(levels(Data[[indVar]])))
+                        ))
+      }) %>%
+      bind_rows(., .id = innerLev)
+  }) %>%
+    purrr::set_names(levels(Data[[outerLev]])) %>%
+    bind_rows(., .id = outerLev) %>%
+    mutate(., "Sig." = symnum(.$p.value,
+                              cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                              symbols = c("****", "***", "**", "*", "+", "ns")))
+}
+```
+
+```{r collate-data-for-three-way-mixed-analysis-from-RawDat}
+Dat3wM <- RawDat[names(RawDat) %like% "mix3"]
+
+# Set reference to "WN"
+Dat3wM <- lapply(Dat3wM, function(ww) {
+  
+  # Set factor references for analysis
+  ww <- within(ww, Diet <- relevel(Diet, ref = "WN"))
+  
+})
+
+# Split dataframe containing multiple tissue data into separate dataframes for analysis
+Dat3wMSpt <- mapply(function(qq, rr) {
+  
+  if (nlevels(qq$Cell_type) > 1) {
+    
+    xxx <- split(qq, qq$Cell_type) %>%
+      
+      lapply(., function(ww) {
+        
+        droplevels(ww)
+        })
+    
+    xxx %>%
+      purrr::set_names(paste(rr, names(xxx), sep = " - "))
+    
+  } else {
+    
+    list(qq)
+  }
+}, qq = Dat3wM, rr = names(Dat3wM), SIMPLIFY = FALSE) %>%
+  flatten(.)
+```
+
+```{r three-way-mixed-analysis}
+# Data analysis by two-way model
+Res3wM <- lapply(Dat3wMSpt, function(bb) {
+  
+  # DATA PREPARATION
+  ExpDat <- bb %>%
+    dplyr::select(any_of(c("Mouse", "Diet", "Route", "Time_point", "Counts", "Weight_g"))) %>%
+    rename(any_of(c(Counts = "Weight_g"))) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    droplevels(.) %>%
+    mutate(across(where(is.character), as.factor))
+  
+    # Generate raw data backup
+    ExpDat2 <- ExpDat
+    
+  
+  # DATA VISUALIZATION by box plot
+  DatDis1 <- ggplot(ExpDat , 
+                    aes(x = Diet, y = Counts, fill = Route)) + 
+    geom_boxplot() +
+    facet_grid( ~ Time_point, labeller = "label_both")
+    
+  
+  # SUMMARY STATISTICS
+  SumStat <- ExpDat %>%
+    group_by(Diet, Route, Time_point) %>%
+    get_summary_stats(Counts, type = "full")
+  
+
+# ASSUMPTION TESTING ###########################################################
+
+  # 1. NORMALITY ---------------------------------------------------------------
+  
+  # Data normality check and transformation loop
+  for (aa in 1:100) {
+    
+    # 1.1 Normality of groups (pre-transformation decision)
+    NormUV <- ExpDat %>% 
+      group_by(., across(any_of(c("Route", "Diet", "Time_point")))) %>%
+      rstatix::shapiro_test(Counts) %>%
+      mutate("Outcome" = ifelse(.$p <= 0.05, "sig.", "ns"))
+      
+      # Data visualization: QQ-plot
+      QQplotUV <- ggpubr::ggqqplot(ExpDat, "Counts", ggtheme = theme_bw()) +
+      facet_grid(Time_point ~ Route + Diet, labeller = "label_both")
+      
+    
+    # Skewness and kurtosis check by group (pre-transformation decision)
+    SkeKur <- lapply(list(ExpDat), function(x) {
+      
+      Skew <- x %>%
+        group_by(., across(any_of(c("Route", "Diet", "Time_point")))) %>%
+        metan::skew(.)
+      
+        if (any(Skew$Counts > 1)) {
+  
+          SkewOut <- "Right skew"
+          
+        } else if (any(Skew$Counts < -1)) {
+  
+          SkewOut <- "Left skew"
+          
+        } else {
+  
+          SkewOut <- "No skew"
+        }
+      
+        print(SkewOut)
+        
+        print(Skew, n = 102)
+      
+      Kurt <- x %>%
+        group_by(., across(any_of(c("Route", "Diet", "Time_point")))) %>%
+        metan::kurt(.)
+        
+        if (any(Kurt$Counts > 2)) {
+  
+          KurtOut <- "Leptokurtic"
+          
+        } else if (any(Kurt$Counts < -2)) {
+  
+          KurtOut <- "Platykurtic"
+          
+        } else {
+  
+          KurtOut <- "Mesokurtic"
+        }
+      
+        print(KurtOut)
+          
+        print(Kurt, n = 102)
+      
+      list("Skewness: Result" = SkewOut,
+           "Skewness: Data"   = Skew, 
+           "Kurtosis: Result" = KurtOut,
+           "Kurtosis: Data"   = Kurt)
+      
+    }) %>%
+      purrr::flatten(.)
+    
+    
+    # 2. OUTLIERS---------------------------------------------------------------
+    # Calculation of outliers
+    OutLierUV <- ExpDat %>% # Untransformed data
+      group_by(., across(any_of(c("Route", "Diet", "Time_point")))) %>%
+      identify_outliers(Counts) %>% # Increased coefficient for small dataset (1.5 to 3)
+      .[, c(1:3, (ncol(.)-1):ncol(.))]
+    
+      # Box-plot for visual assessment of outliers
+      DatDis2 <- ggplot(ExpDat,
+                        aes(x = Diet, y = Counts, fill = Route)) +
+        geom_boxplot() +
+        facet_grid( ~ Time_point, labeller = "label_both")
+      
+    
+    # 3. HOMOGENEITY OF VARIANCES-----------------------------------------------
+    
+    # Testing for homogeneity of variance between the groups of the between-subjects factors for each level of the within-subjects factors
+    EquVar <- ExpDat %>% # If violated, transformation may resolve the issue, or a robust mixed ANOVA can be applied
+      group_by(Time_point) %>%
+      levene_test(Counts ~ Diet * Route, 
+                  data = .)
+    
+      
+    # 4. HOMOGENEITY OF COVARIANCES---------------------------------------------
+    
+    # The Box’s M is highly sensitive, so unless p<0.001 and your sample sizes are unequal, ignore it.
+    
+    
+    # 5. SPHERICITY-------------------------------------------------------------
+    # Mauchly's test executed automatically within anova_test() function, if within-subjects factor has >2 levels. For two within-subjects factor levels, the sphericity assumption hold by default. Here, we only have two levels in the within-subjects factor: "Ticks_Placed"
+      
+    # Two-way Mixed ANOVA (standard) for Maulchy's test
+    Spher <- rstatix::anova_test( # This version is suitable if there are no ouliers
+        data = ExpDat, dv = Counts, wid = Mouse,
+        between = c(Diet, Route), within = Time_point
+        ) # Greenhouse-Geisser sphericity correction automatically applied if Mauchly's test is significant (p<0.05)
+  # RESULTS OF ASSUMPTION TESTING-----------------------------------------------
+    
+    # Assumption of Gaussian distribution  
+    if (any(NormUV$p <= 0.05)) {
+      ResNormUV <- "Univariate: Non-Guassian"
+      print(ResNormUV)
+    } else {
+      ResNormUV <- "Univariate: Guassian"
+      print(ResNormUV)
+    }
+      
+      print(NormUV, n = 102)
+        
+      print(QQplotUV)
+      
+      
+    # Assumption of no significant outliers
+    if (dim(OutLierUV)[1] != 0) {
+      ResOutUV <- paste0(dim(OutLierUV)[1], " ", 
+                      paste(gsub( ".*\\.", "", names(OutLierUV %>% 
+                                                       dplyr::select(where(~any(.x == TRUE)))))[c(2,1)] %>% 
+                              .[!is.na(.)], collapse = " "),
+                      "(s) found")
+      print(ResOutUV)
+    } else {
+      ResOutUV <- "No outliers"
+      print(ResOutUV)
+    }
+      
+      print(DatDis1)
+      
+      print(DatDis2)
+      
+      print(OutLierUV, n = 500)
+      
+      
+    # Assumption of equal variance
+    if (any(EquVar$p <= 0.05)) {
+      ResEquVar <- "Heterogenous variance"
+      print(ResEquVar)
+    } else {
+      ResEquVar <- "Homogeneous variance"
+      print(ResEquVar)
+    }
+      
+      print(EquVar)
+      
+      print(Spher)
+      
+    
+  # MAKE DECISION about data transformation ------------------------------------ 
+  bb <- readline("Continue loop?
+                 0 = Leave loop
+                 1 = Standard Transformation
+                 2 = LambertW Transformation
+                 3 = Revert to raw data")
+    
+    # Data transformation loop
+    if (bb == 0) { # leave the loop
+      
+      break
+      
+    } else if (bb == 1) { # Transform the data
+      
+      # DATA TRANSFORMATION 
+      ExpDat <- DatTrans(ExpDat,
+                         # Name all dependent variables
+                         depVar = "Counts",
+                         # Name all independent variables (predictors)
+                         indVar = c("Diet", "Route"))
+      
+      # Separate transformation information into separate variable
+      ResTrans <- ExpDat[["Transformation"]]
+      
+        print(ResTrans)
+        
+      # Convert transformed data back into a dataframe
+      ExpDat <- ExpDat[!names(ExpDat) %in% "Transformation"] %>%
+        purrr::flatten(.) %>%
+        bind_cols(.) %>%
+        as.data.frame(.)
+      
+    } else if (bb == 2) {
+      
+      # Choose to apply Lambert W or not
+      ExpDat <- ModSkeKur(ExpDat,
+                          # Name all dependent variables
+                          depVar = "Counts",
+                          # Name all independent variables (predictors)
+                          indVar = c("Diet", "Route"), 
+                          Type = "h")
+      
+      # Separate transformation information into separate variable
+      ResTransSK <- ExpDat[["Transformation"]]
+    
+        print(ResTransSK)
+      
+      # Convert transformed data back into a dataframe
+      ExpDat <- ExpDat[!names(ExpDat) %in% "Transformation"] %>%
+        purrr::flatten(.) %>%
+        as.data.frame(.)
+      
+    } else if (bb == 3) {
+      
+      # Revert to raw data in case transformation did not work out
+      ExpDat <- ExpDat2
+    }
+  }
+  
+  # In case no transformation was executed  
+  if (exists("ResTrans") == FALSE & exists("ResTransSK") == FALSE) {
+    
+    ResTrans <- "untransformed"
+    print(ResTrans)
+    
+    ResTransSK <- "untransformed"
+    print(ResTransSK)
+    
+  } else if (exists("ResTrans") == FALSE) {
+    
+    ResTrans <- "untransformed"
+    print(ResTrans)
+    
+  } else if (exists("ResTransSK") == FALSE) {
+    
+    ResTransSK <- "untransformed"
+    print(ResTransSK)
+  }
+  
+  
+  # ASSUMPTION TESTING FOR MIXED-EFFECT MODEL ##################################
+
+    # Test model assumptions
+    
+      # 1. Linearity: Only applies to continuous covariates; if only categorical covariates are used, no need to test.
+      
+      # 2. Normal distribution of residuals: QQplot of residuals, Shapiro-Wilks test, skewness & kurtosis analysis.
+      
+      # 3. Homogeneity of Variance: plot model & Levene's test of residuals by group.
+      
+      # 4. Normality of random effect: Get the estimate of random effect (here, random intercepts), and check them as check the residual. But it is not efficient because you just have 7 random intercepts.
+      
+      # 5. Another assumption is the independent between subjects: no test 
+     
+    # --------------------------------------------------------------------------
+    
+    # Residual normality check and transformation loop
+    for (zz in 1:100) {
+      
+      # ------------------------------------------------------------------------
+      
+      # Mixed-effect model
+      Mod  <- nlme::lme(Counts ~ Diet * Route * Time_point,
+                        random = ~1|Mouse,
+                        method = "ML",
+                        data = ExpDat)
+      
+      
+    # ------------------------------------------------------------------------
+    
+      # 2. Normality of model residuals
+      
+        # Shapiro-Wilks test of residuals
+        NormRes <- shapiro_test(residuals(Mod)) %>% # Shapiro-Wilks test of model residuals
+          mutate("Outcome" = ifelse(.$p.value <= 0.05, "sig.", "ns"))
+        
+          if (NormRes$p.value < 0.05) {
+            
+            ResNormRes <- "Residuals: Non-Guassian"
+            print(ResNormRes)
+            
+          } else {
+            
+            ResNormRes <- "Residuals: Guassian"
+            print(ResNormRes)
+            
+          }
+        
+          print(NormRes)
+        
+          # Data visualization: QQ-plot
+          QQplotRes <- ggqqplot(residuals(Mod), 
+                                ggtheme = theme_bw())
+
+            print(QQplotRes)
+        
+        # Check for data skewness and kurtosis to verify Gaussian distribution of residuals
+          
+        SkeKurRes <- lapply(list(Mod), function(x) {
+          
+          # Assess skewness of model residuals
+          SkewRes <- moments::skewness(residuals(x))
+        
+          if (SkewRes > 1) {
+            
+            SkewOutRes <- "Residuals: right skew"
+            
+          } else if (SkewRes < -1) {
+            
+            SkewOutRes <- "Residuals: left skew"
+            
+          } else {
+            
+            SkewOutRes <- "Residuals: no skew"
+            
+          }
+          
+            print(SkewOutRes)
+            
+            print(SkewRes)
+            
+          
+          # Assess kurtosis of model residuals
+          KurtRes <- moments::kurtosis(residuals(x)) - 3
+          
+          if (KurtRes > 2) {
+            
+            KurtOutRes <- "Residuals: leptokurtic"
+            
+          } else if (KurtRes < -2) {
+            
+            KurtOutRes <- "Residuals: platykurtic"
+            
+          } else {
+            
+            KurtOutRes <- "Residuals: mesokurtic"
+            
+          }
+          
+            print(KurtOutRes)
+            
+            print(KurtRes)
+        
+          c(list("Skewness" = SkewRes), list("Kurtosis" = KurtRes))
+        
+        }) %>%
+          purrr::flatten(.)
+          
+            
+    # ----------------------------------------------------------------------------
+      
+      # 3. Homogeneity of Variance
+        
+        # scale-location plot
+        print(plot(Mod,
+              sqrt(abs(resid(.))) ~ fitted(.),
+              type = c("p","smooth"), 
+              lwd = 3, 
+              col.line = 1))
+        
+          EquVarPlotRes1 <- recordPlot()
+          
+        # fitted vs residual with smooth line added
+        print(plot(Mod, 
+              type = c("p","smooth"), 
+              lwd = 3, 
+              col.line = 1))
+          
+          EquVarPlotRes2 <- recordPlot()
+          
+          
+    # ----------------------------------------------------------------------------
+          
+      # 4. Normality of random effect
+      
+        # Shapiro-Wilks test
+        NormResRE <- shapiro_test(coef(Mod)[, "(Intercept)"]) # Check normal distribution of random effect intercepts
+        
+        print(NormResRE)
+      
+        if (NormResRE$p.value < 0.05) {
+        
+          ResNormResRE <- "Random Effect: non-Guassian"
+          print(ResNormResRE)
+          
+        } else {
+          
+          ResNormResRE <- "Random Effect: Guassian"
+          print(ResNormResRE)
+          
+        }
+        
+          # QQ-plot of model random effect intercepts
+          QQResRE <- ggqqplot(coef(Mod)[, "(Intercept)"],
+                               ggtheme = theme_bw())
+          
+            print(QQResRE)
+      
+          # Check for data skewness and kurtosis to verify Gaussian distribution of residuals
+          
+          SkeKurRE <- lapply(list(Mod), function(x) {
+            
+            # Assess skewness of model residuals
+            SkewRE <- moments::skewness(coef(x)[, "(Intercept)"])
+          
+            if (SkewRE > 1) {
+              
+              SkewOutRE <- "Random Effect: right skew"
+              
+            } else if (SkewRE < -1) {
+              
+              SkewOutRE <- "Random Effect: left skew"
+              
+            } else {
+              
+              SkewOutRE <- "Random Effect: no skew"
+              
+            }
+            
+              print(SkewOutRE)
+              
+              print(SkewRE)
+              
+            
+            # Assess kurtosis of model residuals
+            KurtRE <- moments::kurtosis(coef(x)[, "(Intercept)"]) - 3
+            
+            if (KurtRE > 2) {
+              
+              KurtOutRE <- "Random Effect: leptokurtic"
+              
+            } else if (KurtRE < -2) {
+              
+              KurtOutRE <- "Random Effect: platykurtic"
+              
+            } else {
+              
+              KurtOutRE <- "Random Effect: mesokurtic"
+              
+            }
+            
+              print(KurtOutRE)
+              
+              print(KurtRE)
+            
+              
+            c(list("Skewness" = SkewRE), list("Kurtosis" = KurtRE))
+            
+          }) %>%
+            purrr::flatten(.)
+          
+      
+    # ----------------------------------------------------------------------------      
+    
+    # Make decision about data transformation   
+    bb <- readline("Continue loop?
+                   0 = Leave loop
+                   1 = Standard Transformation
+                   2 = LambertW Transformation
+                   3 = Revert to raw data")
+      
+      # Data transformation loop
+      if (bb == 0) { # leave the loop
+        
+        break
+        
+      } else if (bb == 1) { # Transform the data
+        
+        # DATA TRANSFORMATION
+        ExpDat <- DatTrans(ExpDat,
+                           # Name all dependent variables
+                           depVar = "Counts",
+                           # Name all independent variables (predictors)
+                           indVar = c("Diet", "Route"))
+  
+          # Separate transformation information into separate variable
+          ResTransMod <- ExpDat[["Transformation"]]
+        
+            print(ResTransMod)
+          
+          # Convert transformed data back into a dataframe
+          ExpDat <- ExpDat[!names(ExpDat) %in% "Transformation"] %>%
+            purrr::flatten(.) %>%
+            bind_cols(.) %>%
+            as.data.frame(.)
+        
+      } else if (bb == 2) {
+        
+        # Choose to apply Lambert W or not
+        ExpDat <- ModSkeKur(ExpDat,
+                            # Name all dependent variables
+                            depVar = "Counts",
+                            # Name all independent variables (predictors)
+                            indVar = c("Diet", "Route"), 
+                            Type = "h")
+      
+          # Separate transformation information into separate variable
+          ResTransModSK <- ExpDat[["Transformation"]]
+          
+            print(ResTransModSK)
+          
+          # Convert transformed data back into a dataframe
+          ExpDat <- ExpDat[!names(ExpDat) %in% "Transformation"] %>%
+            purrr::flatten(.) %>%
+            as.data.frame(.)
+        
+      } else if (bb == 3) {
+        
+        # Revert to raw data in case transformation did not work out
+        ExpDat <- ExpDat2
+      
+      } else {
+        
+        print("Wrong input")
+        stop()
+      }
+    }
+      
+    # In case no transformation was executed  
+    if (exists("ResTransMod") == FALSE & exists("ResTransModSK") == FALSE) {
+      
+      ResTransMod <- "untransformed"
+      print(ResTransMod)
+      
+      ResTransModSK <- "untransformed"
+      print(ResTransModSK)
+      
+    } else if (exists("ResTransMod") == FALSE) {
+      
+      ResTransMod <- "untransformed"
+      print(ResTransMod)
+      
+    } else if (exists("ResTransModSK") == FALSE) {
+      
+      ResTransModSK <- "untransformed"
+      print(ResTransModSK)
+    }
+    
+  
+  # HYPOTHESIS TESTING SELECTION #############################################
+  
+  for (xx in 1:100) {
+    
+    # Make decision about data transformation   
+    cc <- readline("Select statistical test to run based on assumption tests:
+                    0 = Exist loop
+                    1 = Standard three-way Mixed ANOVA
+                    2 = Robust three-way Mixed ANOVA
+                    3 = Linear mixed model")
+    
+    if (cc == 0) { # Leave the loop
+      
+      break
+    
+    } else if (cc == 1) { # Standard two-way ANOVA if assumptions are met
+      
+      # Three way ANOVA
+      res.aov3w <- rstatix::anova_test(data = ExpDat,
+                                       dv = Counts,
+                                       wid = Mouse,
+                                       between = c(Diet, Route),
+                                       within = Time_point
+                                       )
+        
+        ResAov3w <- "Standard three-way ANOVA"
+        print(ResAov3w)
+        
+        
+        # Two-way ANOVA for two-way interaction
+        res.aov2w <- ExpDat %>%
+          group_by(Time_point) %>%
+          rstatix::anova_test(data = .,
+                              dv = Counts,
+                              wid = Mouse,
+                              between = c(Diet, Route)) %>%
+          adjust_pvalue(method = "BH") %>%
+          as.data.frame(.) %>%
+          mutate(., "Sig." = symnum(.$p.adj,
+                                    cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                                    symbols = c("****", "***", "**", "*", "+", "ns")))
+      
+          ResAov2w <- "Standard two-way ANOVA"
+          print(ResAov2w)
+          
+          # One-way ANOVA for simple simple main effect
+          res.aov1w <- list(
+            
+            # For Route
+            "Predictor: Route" = ExpDat %>%
+              group_by(Time_point, Diet) %>%
+              rstatix::anova_test(data = .,
+                                  dv = Counts,
+                                  wid = Mouse,
+                                  between = Route) %>%
+              adjust_pvalue(method = "BH") %>%
+              as.data.frame(.) %>%
+              mutate(., "Sig." = symnum(.$p.adj,
+                                        cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                                        symbols = c("****", "***", "**", "*", "+", "ns"))),
+          
+            # For Diet
+            "Predictor: Diet" = ExpDat %>%
+              group_by(Time_point, Route) %>%
+              rstatix::anova_test(data = .,
+                                  dv = Counts,
+                                  wid = Mouse,
+                                  between = Diet) %>%
+              adjust_pvalue(method = "BH") %>%
+              as.data.frame(.) %>%
+              mutate(., "Sig." = symnum(.$p.adj,
+                                        cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                                        symbols = c("****", "***", "**", "*", "+", "ns")))
+            )
+      
+            ResAov1w <- "Standard one-way ANOVA"
+            print(ResAov1w)
+            
+            # Simple simple pairwise comparison
+            res.aovPw <- list(
+              
+              # For Route
+              "Predictor: Route" = ExpDat %>%
+                group_by(Time_point, Diet) %>%
+                rstatix::pairwise_t_test(Counts ~ Route,
+                                         p.adjust.method = "BH"),
+              
+              # For Diet
+              "Predictor: Diet" = ExpDat %>%
+                group_by(Time_point, Route) %>%
+                rstatix::pairwise_t_test(Counts ~ Diet,
+                                         p.adjust.method = "BH")
+              )
+        
+              ResAovPW <- "Pairwise t test"
+              print(ResAovPW)
+      
+    } else if (cc == 2) { # Robust two-way ANOVA
+    
+      # Three way ANOVA
+      res.aov3w <- WRS2::t3way(Counts ~ Diet * Route * Time_point,
+                               id = Mouse,
+                               data = ExpDat)
+        
+        ResAov3w <- "Robust three-way ANOVA"
+        print(ResAov3w)
+        
+        
+        # Two-way ANOVA for two-way interaction
+        res.aov2w <- t2waySplit(Data = ExpDat, 
+                                indVar = c("Diet", "Route"), 
+                                outerLev = "Time_point")
+        
+          ResAov2w <- "Robust two-way ANOVA"
+          print(ResAov2w)
+          
+          # One-way ANOVA for simple simple main effect
+          res.aov1w <- list(
+            
+            # For Route
+            "Predictor: Route" = t1waySplit(Data = ExpDat, 
+                                            indVar = "Route", 
+                                            outerLev = "Time_point", 
+                                            innerLev = "Diet"),
+              
+            # For Diet
+            "Predictor: Diet" = t1waySplit(Data = ExpDat, 
+                                           indVar = "Diet", 
+                                           outerLev = "Time_point", 
+                                           innerLev = "Route")
+            )
+      
+            ResAov1w <- "Robust one-way ANOVA"
+            print(ResAov1w)
+          
+            # Simple simple pairwise comparison
+            res.aovPw <- list(
+            
+              # For Route
+              "Predictor: Route" = linconSplit(Data = ExpDat, 
+                                               indVar = "Route", 
+                                               outerLev = "Time_point", 
+                                               innerLev = "Diet"),
+                
+              # For Diet
+              "Predictor: Diet" = linconSplit(Data = ExpDat, 
+                                              indVar = "Diet", 
+                                              outerLev = "Time_point", 
+                                              innerLev = "Route")
+              )
+        
+              ResAovPW <- "Linear contrast expression"
+              print(ResAovPW)
+    
+    } else if (cc == 3) { # simple linear regression model
+    
+      # ANOVA to assess the significance of the independent variables
+      res.aov3w <- nlme::anova.lme(Mod,
+                                 type = "sequential",
+                                 adjustSigma = FALSE)
+      
+      ResAov3w <- "Mixed effects model"
+      print(ResAov3w) 
+        
+      # Post hoc by estimated marginal means
+      PostHoc <- emmeans(Mod, ~ Diet * Route * Time_point)
+      
+        # Individual sample effect and Pairwise comparison
+        res.aovPw <- list("Estimated marginal means" = PostHoc,
+          
+          "Each level against overall level" = contrast(PostHoc,
+                                                        method = "eff",
+                                                        adjust = "sidak"),
+          
+          # Pairwise comparison
+          "Pairwise comparison" = contrast(PostHoc,
+                                           method = "pairwise",
+                                           adjust = "sidak"),
+          
+          # Letter code for pairwise comparison
+          "Pairwise letter code" = cld(PostHoc,
+                                       alpha = 0.05,
+                                       Letters = letters,      ### Use lower-case letters for .group
+                                       adjust = "sidak")
+        )
+        
+        ResAovPW <- "Estimated marginal means analysis"
+        print(ResAovPW)
+        
+      res.aov2w <- "Not applicable for linear regression"
+      ResAov2w <- "Not applicable for linear regression"
+      res.aov1w <- "Not applicable for linear regression"
+      ResAov1w <- "Not applicable for linear regression"
+    }
+  }
+      
+  # COLLATE DATA----------------------------------------------------------------
+    
+  # Collate the test outcome calls
+  AssTest <- as.data.frame(rbind("Dat_Transformation"                       = ResTrans,
+                                 "Transformation_for_skewness_and_kurtosis" = ResTransSK,
+                                 "Data_Normality_Assumption"                = ResNormUV,
+                                 "Residual_Normality_Assumption"            = ResNormRes,
+                                 "Outliers"                                 = ResOutUV,
+                                 "Homogeneity_of_Variance"                  = ResEquVar,
+                                 "3-way_analysis_applied"                   = ResAov3w,
+                                 "2-way_ANOVA_Test_applied"                 = ResAov2w,
+                                 "1-way_ANOVA_Test_applied"                 = ResAov1w,
+                                 "Pairwise_comparison_applied"              = ResAovPW
+                                 )) %>%
+    setNames(., "Outcome")
+  
+  # Compile output data list
+  AovDat <- list("Summary"                               = SumStat,
+                 "Data Box plot (pre-transformed)"       = DatDis1,
+                 "Assumption_Test_Outcome"               = AssTest,
+                 "Data_Normality_Assumption"             = NormUV,
+                 "QQ plot: by groups"                    = QQplotUV,
+                 "Skewness and Kurtsosis"                = SkeKur,
+                 "Residual_Normality_Assumption"         = NormRes,
+                 "QQ plotof residuals"                   = QQplotRes,
+                 "Residual_Normality_Assumption"         = SkeKurRes,
+                 "Outliers"                              = OutLierUV,
+                 "Data Box plot (post-transformed)"      = DatDis2,
+                 "Homogeneity_of_Variance"               = EquVar,
+                 "Random_Effect_Normality_Assumption"    = NormResRE,
+                 "Random_Effect_Normality_Assumption"    = SkeKurRE,
+                 "Scale location"                        = EquVarPlotRes1,
+                 "Residuals_vs_Fitted"                   = EquVarPlotRes2,
+                 "Simple linear model"                   = Mod,
+                 "3-way_ANOVA"                           = res.aov3w,
+                 "2-way_ANOVA_post_hoc"                  = res.aov2w,
+                 "1-way_ANOVA_simple_simple_main_effect" = res.aov1w,
+                 "Pairwise_simple_simple_comparison"     = res.aovPw
+                 )
+
+}) %>%
+  purrr::set_names(names(Dat3wMSpt))
+
+gc()
+```
+
+```{r post-hoc-power-calculation-for-three-way-mixed-anova}
+# !!! This power calculation is flawed as it does not recognize the repeated measures of Time-point !!!
+# !!! But there is no power calculation for a three-way mixed model !!!
+# Retrospective sample size calculation for 80% power for three-way interaction
+PwrCal3wM <- mapply(function(qq, zz) {
+  
+  # Get the names of the predictor variables used in the three-way ANOVA
+  if (any(colnames(zz[["3-way_ANOVA"]]) == "Effect")) { # For standard ANOVA
+    
+    PrdNam <- zz[["3-way_ANOVA"]][c(1:3), "Effect"]
+    AllNam <- zz[["3-way_ANOVA"]][["Effect"]]
+    
+  } else if (any(names(zz[["3-way_ANOVA"]]) == "varnames")) { # For robust ANOVA
+    
+    PrdNam <- zz[["3-way_ANOVA"]][["varnames"]][ !zz[["3-way_ANOVA"]][["varnames"]] %in% "Counts"]
+    AllNam <- zz[["3-way_ANOVA"]] %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        
+        yy[yy != ""]
+      }) %>%
+      .[c(6:12)] %>%
+      lapply(., function(zz) {
+        
+        zz %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      .[["V1"]]
+    
+  } else { # For simple linear regression
+    
+    PrdNam <- rownames(zz[["3-way_ANOVA"]])[!rownames(zz[["3-way_ANOVA"]]) %like% ":" & 
+                                            !rownames(zz[["3-way_ANOVA"]]) %in% "Residuals"]
+    AllNam <- rownames(zz[["3-way_ANOVA"]])[!rownames(zz[["3-way_ANOVA"]]) %in% "Residuals"]
+  }
+  
+  # Convert into list of different combinations of predictor names
+  AllNam <- lapply(AllNam, function(aa) {
+    
+    if (length(strsplit(aa, ":") %>% 
+               unlist(.)) == 1) {
+      
+      aa
+      
+    } else if (length(strsplit(aa, ":") %>%
+                      unlist(.)) == 2) {
+      
+      c(strsplit(aa, ":") %>% 
+         unlist(.),
+        aa)
+      
+    } else {
+      
+      AllNam
+    }
+  })
+  
+  # Get the number of factor levels for each predictors
+  FacLvl <- sapply(PrdNam, function(rr){
+    
+    nlevels(qq[[rr]])
+  }) 
+  
+  # Calculate the total N of animals used in the study
+  totN <- eval(parse(text = paste0("sum(table(", paste(paste0("qq$", names(FacLvl)), collapse = ","), ")[,,1])")))
+  
+  # DATA PREPARATION
+  ExpDat <- qq %>%
+    dplyr::select(any_of(c("Mouse", "Diet", "Route", "Cell_type", "Time_point", "Counts", "Weight_g"))) %>%
+    rename(any_of(c(Counts = "Weight_g"))) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    droplevels(.) %>%
+    mutate(across(where(is.character), as.factor))
+  
+  # Simple linear model for three-way ANOVA
+  ModCont <- lm(as.formula(paste("Counts ~", paste(PrdNam, collapse = " * "))), 
+   data = ExpDat,
+   contrasts = list(
+     Diet = "contr.sum",
+     Route = "contr.sum",
+     Time_point = "contr.sum"
+     )
+   )
+  
+  # Get partial effect sizes
+  EffSiz <- effectsize::eta_squared(car::Anova(ModCont, type = 3), partial = TRUE) %>%
+    mutate(., "Effect_size" = .[["Eta2_partial"]] %>%
+             effectsize::interpret_omega_squared(., rules = "cohen1992")) # For partial eta^2
+  
+  # Perform retrospective power calculation
+  SmplSize <- mapply(function(uu, tt, ss) {
+    
+    pwrss::pwrss.f.ancova(eta2 = uu, 
+                          n.levels = FacLvl[tt], 
+                          alpha = 0.05, 
+                          power = 0.8) %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        yy[yy != ""]
+      }) %>%
+      { if (length(tt) == 1) {
+        .[8]
+        } else if (length(tt) == 2) {
+          .[c(9:11)]
+        } else {
+          .[c(10:16)]
+        }
+      } %>%
+      lapply(., function(xx) {
+        tail(xx, 5) %>% 
+        lapply(., function(vv) {
+          vv[vv != ""]
+        }) %>%
+        lapply(., function(ww) {
+          ww %>%
+            as.data.frame(.) %>%
+            t(.) %>%
+            as.data.frame(.)
+        }) %>%
+          bind_cols(.) 
+      }) %>%
+      bind_rows(.) %>%
+      set_colnames(c("power", "n.total", "ncp", "df1", "df2")) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., "effect" = ss, .before = "power")
+  }, uu = EffSiz$Eta2_partial, 
+     tt = lapply(EffSiz$Parameter, function(rr) {
+       strsplit(rr, ":") %>% 
+         unlist(.)
+    }), 
+     ss = AllNam,
+     SIMPLIFY = FALSE) %>%
+    purrr::set_names(EffSiz$Parameter)
+  
+  # Perform retrospective power calculation
+  RtrPwr <- mapply(function(uu, tt, ss) {
+    
+    pwrss::pwrss.f.ancova(eta2 = uu, 
+                          n.levels = FacLvl[tt], 
+                          alpha = 0.05, 
+                          n = totN) %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        yy[yy != ""]
+      }) %>%
+      { if (length(tt) == 1) {
+        .[8]
+        } else if (length(tt) == 2) {
+          .[c(9:11)]
+        } else {
+          .[c(10:16)]
+        }
+      } %>%
+      lapply(., function(xx) {
+        tail(xx, 5) %>% 
+        lapply(., function(vv) {
+          vv[vv != ""]
+        }) %>%
+        lapply(., function(ww) {
+          ww %>%
+            as.data.frame(.) %>%
+            t(.) %>%
+            as.data.frame(.)
+        }) %>%
+          bind_cols(.) 
+      }) %>%
+      bind_rows(.) %>%
+      set_colnames(c("power", "n.total", "ncp", "df1", "df2")) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., "effect" = ss, .before = "power")
+  }, uu = EffSiz$Eta2_partial, 
+     tt = lapply(EffSiz$Parameter, function(rr) {
+       strsplit(rr, ":") %>% 
+         unlist(.)
+    }), 
+     ss = AllNam,
+     SIMPLIFY = FALSE) %>%
+    purrr::set_names(EffSiz$Parameter)
+  
+  # Output data
+  list("Effect_Size" = EffSiz,
+       "Sample_Size_for_80%_Power" = SmplSize,
+       "Statistical_Power_of_Data" = RtrPwr)
+  
+}, qq = Dat3wMSpt, zz = Res3wM, SIMPLIFY = FALSE) 
+```

@@ -117,10 +117,55 @@ ResC2 <- lapply(names(ResC2), function(xx) {
     # Calculate odds ratio with 95% CI
     Output <- list("Chi-square test" = TestLDT,
                    "Pairwise Chi-square test" = Pairwise,
-                   "Odds Ratios" = oddsratio(as.matrix(t(DatC2Spt[[xx]]))))
+                   "Odds Ratios" = epitools::oddsratio(as.matrix(t(DatC2Spt[[xx]]))))
   }
 }) %>%
   setNames(names(ResC2))
 
 gc()
+```
+
+```{r post-hoc-power-calculation-for-chi-2}
+# Retrospective sample size calculation for 80% power for three-way interaction
+PwrCalC2 <- lapply(DatC2Spt, function(qq) {
+  
+  cbind(
+    # Retrospective sample size calculation
+    pwrss.chisq.gofit(p1 = as.matrix(qq),
+                      alpha = 0.05, 
+                      power = 0.80) %>%
+    capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., "  ") %>%
+      .[c(4,5,7:10)] %>%
+      lapply(., function(rr) {
+        strsplit(rr, " = ") %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      tibble::remove_rownames(.) %>%
+      tibble::column_to_rownames("V1"),
+    
+    # Statistical power calculation for the data
+    pwrss.chisq.gofit(p1 = as.matrix(qq),
+                      alpha = 0.05, 
+                      n = sum(qq)) %>%
+    capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., "  ") %>%
+      .[c(4,5,7:10)] %>%
+      lapply(., function(rr) {
+        strsplit(rr, " = ") %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      tibble::remove_rownames(.) %>%
+      tibble::column_to_rownames("V1")
+  ) %>%
+    set_colnames(c("Sample size", "Statistical power"))
+})
 ```

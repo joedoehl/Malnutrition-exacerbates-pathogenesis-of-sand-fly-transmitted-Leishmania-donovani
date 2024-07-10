@@ -1,0 +1,163 @@
+---
+title: "Figure 2c"
+author: "Johannes S. P. Doehl"
+date: "2024-06-21"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-2c, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-2c}
+# Figure name
+FigNam <- "Figure 2c"
+
+# Total mice used
+TotN <- DatCntSpt %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  nrow(.)
+
+# Total N per group
+SampleN <- table(DatCntSpt %>%
+        .[names(.) %like% FigNam] %>%
+        .[[1]] %>%
+        .[, c("Diet", "Route")]) %>% as.vector(.) %>%
+  purrr::set_names(paste(DatCntSpt %>%
+                           .[names(.) %like% FigNam] %>%
+                           .[[1]] %>%
+                           .[["Diet"]],
+                         DatCntSpt %>%
+                           .[names(.) %like% FigNam] %>%
+                           .[[1]] %>%
+                           .[["Route"]],
+                         sep = "_") %>%
+                     unique(.)
+    )
+
+# Dispersion ratio
+DispRat <- RegModAIC %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .[[1]] %>%
+  .[["Dispersion test 2"]] %>%
+  c(.) %>%
+  lapply(., function(xx) {
+    round(xx, 4)
+    })
+
+# Pseudo-R2
+pR2 <- RegModAIC %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .[[1]] %>%
+  .[["Pseudo R-square"]] %>%
+  .[["Pseudo.R.squared.for.model.vs.null"]] %>%
+  as.data.frame(.) %>%
+  tibble::rownames_to_column(.) %>%
+  .[3,]
+```
+
+Here, we present the parasite counts per isolated draining lymph node according to qPCR as a measure of parasite dissemination to the organ. To analyze this data, we had to re-scale it, due to the occurrence of zero-values in instances of no detection, by dividing all value by the smallest non-zero value in the dataset. This resulted in a approximate Poisson / negative binomial distribution, which allowed the convenient analysis of the re-scaled and rounded counts by the appropriate models for these distributions.
+
+We analyzed a total of *N*=`r TotN` BALB/c mice (`r paste(names(SampleN), SampleN, sep = "=", collapse = ", ")`). These were the same mice as analyzed in figure 2a for parasite dissemination events. Here, we quantified parasite burden per isolated draining lymph node. For the data analysis we tested several Poisson and negative binomial-type regression models. Based on the Akaike information criterion (AIC) we selected a `r RegModAIC %>% .[names(.) %like% FigNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` regression model for the data analysis post data re-scaling. The model fitted the data well producing no statistically significant departure from 1 for its dispersion ratio (`r paste(names(DispRat), DispRat, sep = ": ", collapse = ", ")`) and showing a reasonable pseudo-R^2^ (`r paste(pR2, collapse = ": ")`). The model output showed that both, "Diet" and "Route" were statistically significant predictors, but there was no statistically significant interaction between these two predictors (Appendix table `r TabNum + 1`).
+
+```{r table-73-regression-analysis-of-counts, include = TRUE, eval = TRUE}
+# Model output
+RegModAIC %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>% # pulls out the data from the list
+  .[[1]] %>% # picks the only model output left
+  .[["Regression model"]] %>%
+  summary(.) %>%
+  stats::coef(.) %>%
+  as.data.frame(.) %>%
+  mutate(., "sig." = .[["Pr(>|z|)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("Pr(>|z|)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 73**"),
+      subtitle = md("**Negative binomial regression model output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+The pairwise comparison based on the estimated marginal means showed that well-nourished needle inoculated BALB/c mice had statistically significantly less parasites in the draining lymph nodes than all other groups (Appendix table `r TabNum + 2`) and clearly clustered on its own (Appendix table `r TabNum + 3`). On the other hand, malnourished needle inoculated and well-nourished sand fly transmitted infection were comparable in their degree of parasite dissemination. Also, malnourished and well-nourished sand fly transmitted infection clustered together. Together, this data suggested that sand fly transmitted infections had statistically significant higher degree of parasite dissemination for each nutritional state, while malnourishment also exacerbated parasite dissemination. Ultimately, the effects of both variables seemed additive, but the regression model did not support this hypothesis, suggesting that either effect acted independently of one another.
+
+```{r table-74-pairwise-comparison, include = TRUE, eval = TRUE}
+RegModAIC %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>% # pulls out the data from the list
+  .[[1]] %>% # picks the only model output left
+  .[["Pairwise Comparison of EMMs"]] %>%
+  as.data.frame(.) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "Predictor pairs") %>%
+    tab_header(
+      title = md("**Appendix Table 74**"),
+      subtitle = md("**Pairwise comparison based on estimated marginal means**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-75-pairwise-comparison-letter, include = TRUE, eval = TRUE}
+RegModAIC%>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>% # pulls out the data from the list
+  .[[1]] %>% # picks the only model output left
+  .[["Pairwise Comparison of EMMs (letters)"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 75**"),
+      subtitle = md("**Pairwise comparison letter code**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+
+
+```{r update-table-number-figure-2c}
+TabNum <- TabNum + 3
+```

@@ -41,8 +41,7 @@ DatCntSpt <- mapply(function(qq, rr) {
   flatten(.)
 
 # Merge Diet and Route variable into one column when separate factor levels do not occur for all groups
-xxx <- lapply(DatCntSpt[names(DatCntSpt) %like% "2e-f" |
-                         names(DatCntSpt) %like% "3d" |
+xxx <- lapply(DatCntSpt[names(DatCntSpt) %like% "3d" |
                           names(DatCntSpt) %like% "S1c"], function(dd) {
   
   dd %>%
@@ -55,6 +54,52 @@ xxx <- lapply(DatCntSpt[names(DatCntSpt) %like% "2e-f" |
 DatCntSpt[names(xxx)] <- xxx
 
 rm(xxx)
+
+# Re-scale the data by deviding all values with the smallest count other than 0
+# Re-scaling is necessary to revert the data toward a Poisson/negative binomial distribution for better fit
+DatCntSpt <- lapply(DatCntSpt, function(qq) {
+  
+  # Check which dataset has >15% zeros and which do not
+  Zeros <- sum(qq$Counts == 0) * 100 / nrow(qq)
+  
+  # Re-scale where needed
+  if (Zeros >= 15) {
+    
+    Dat <- qq %>%
+      mutate(., "Counts" = scale(qq[["Counts"]], center = FALSE, scale = min(qq[["Counts"]][qq[["Counts"]] > 0]))) %>%
+      mutate(., across("Counts", ~ round(.x, 0)))
+    
+  } else {
+    
+    Dat <- qq %>%
+      mutate(., "Counts" = scale(qq[["Counts"]], center = FALSE, scale = 1)) %>%
+      mutate(., across("Counts", ~ round(.x, 0)))
+    
+  }
+  
+  Dat
+})
+
+ReScaled <- lapply(DatCntSpt, function(yy) {
+  
+  # Check which dataset has >15% zeros and which do not
+  Zeros <- sum(yy$Counts == 0) * 100 / nrow(yy)
+  
+  # Re-scale where needed
+  if (Zeros >= 15) {
+    
+    "Yes"
+    
+  } else {
+    
+    "No"
+  }
+  
+}) %>%
+  as.data.frame(.) %>%
+  t(.) %>%
+  as.data.frame(.) %>%
+  set_colnames("Rescaled")
 ```
 
 ```{r regression-models-for-count-data}
@@ -65,7 +110,7 @@ ZroInf <- c("zero-inflated", "standard")
 
 # Analyzes data of experiments
 ResCnt <- mapply(function(aa, zz) {
-
+  
   lapply(ZroInf, function(cc) {
       
       lapply(RegMods, function(dd) {
@@ -138,18 +183,18 @@ ResCnt <- mapply(function(aa, zz) {
         
         
         # Dispersion statistic to see which model brings dispersion closest to 1
-        E2 <- residuals(Mod, type = "pearson")
+        E2 <- stats::residuals(Mod, type = "pearson")
         N  <- nrow(aa)
         
         if (dd == "negative_binomial") {
   
           # For negative binomial regression
-          p  <- length(coef(Mod)) + 1  # '+1' is for variance parameter in NB
+          p  <- length(stats::coef(Mod)) + 1  # '+1' is for variance parameter in NB
           
         } else {
   
           # For Poisson regrassion
-          p  <- length(coef(Mod))
+          p  <- length(stats::coef(Mod))
           
         }
   
@@ -159,8 +204,8 @@ ResCnt <- mapply(function(aa, zz) {
         DispTest2 <- performance::check_overdispersion(Mod)
     
         # looks at mean and variance of dependent variable
-        DispTest3 <- pastecs::stat.desc(aa$Counts)[c("mean", "var")]
-        DispTest3 <- c(DispTest3, "var/mean" = DispTest3["var"] / DispTest3["mean"])
+        DispTest3 <- pastecs::stat.desc(aa$Counts)[c("mean", "var"),]
+        DispTest3 <- c(DispTest3, "var/mean" = DispTest3[2] / DispTest3[1])
         
         # Estimated marginal means analysis of the model
         EmmMod <- emmeans::emmeans(Mod, as.formula(
@@ -241,7 +286,7 @@ ModSum <- lapply(ModComp, function(aa) {
 
 
 # Extract AICs for the different models
-AIC <- lapply(ModSum, function(dd) {
+AICCnt <- lapply(ModSum, function(dd) {
   
   mapply(function(ee, ff) {
     
@@ -259,7 +304,7 @@ AIC <- lapply(ModSum, function(dd) {
 })
 
 # Select the dispersion values closest to one and select its model
-ModSelAIC <- lapply(AIC, function(gg) {
+ModSelAIC <- lapply(AICCnt, function(gg) {
   
   # Identify the test with has the dispersion closest to 1 
   which.min(gg) %>%
@@ -364,7 +409,7 @@ RegModDisp <- mapply(function(dd, ff) {
 ResAssump <- lapply(RegModAIC, function(aa) {
   
   # Shapiro-Wilks test of residuals
-  NormRes <- shapiro_test(residuals(aa[[1]][["Regression model"]])) %>% # Shapiro-Wilks test of model residuals
+  NormRes <- shapiro_test(stats::residuals(aa[[1]][["Regression model"]])) %>% # Shapiro-Wilks test of model residuals
     mutate("sig." = ifelse(.$p.value < 0.1, ".",
                            ifelse(.$p.value <= 0.05, "*",
                                   ifelse(.$p.value < 0.01, "**",
@@ -372,17 +417,17 @@ ResAssump <- lapply(RegModAIC, function(aa) {
                                                 ifelse(.$p.value < 0.0001, "****", ""))))))
     
   # Data visualization: QQ-plot
-  plotRes <- ggqqplot(residuals(aa[[1]][["Regression model"]]), ggtheme = theme_bw())
+  plotRes <- ggqqplot(stats::residuals(aa[[1]][["Regression model"]]), 
+                      ggtheme = theme_bw(),
+                      scales = "free")
   
   # Collate the tests
   list("Shapiro_Wilks" = NormRes,
        "QQ_plot"       = plotRes)
     
 })
-
-# pastecs::stat.desc(DatCntSpt$`Figure 2c Cnt`$Counts)
-
 ```
+
 
 ```{r clean-up-count-data-analysis-variables}
 rm(RegMods, ZroInf)

@@ -1,0 +1,54 @@
+---
+title: "Figure 1h"
+author: "Johannes S. P. Doehl"
+date: "2024-06-18"
+output: html_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-1h, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-1h}
+# Figure name
+FigNam <- "Figure 1h"
+
+FldSum <- DatFC[[names(DatFC) %like% FigNam]] %>% 
+  dplyr::select(Diet, Route, Fold_diff) %>%
+  group_by(Diet, Route) %>% 
+  get_summary_stats(., type = "full") %>% 
+  print(., n = 28)
+```
+
+Here, we are presenting the relative fold difference in the heme oxygenase-1 (HO-1) protein levels in well-nourished (WN) and malnourished (MN) BALB/s mice infected with *Leishmania donovani* parasites via the sand fly route or uninfected. Heat-shock protein 90 (Hsp90) was used as a house-keeping gene control for the Western blot loading control and well-nourished control (WN Ctrl) mice served as a HO-1 concentration reference. Three Western blots were produced with different pooled samples as biological replicas. To normalize the band intensity readings, we first normalized the Hsp90 loading controls by dividing them with the value for WN Ctrl Hsp90 for each Western blot separately. We then divided the HO-1 readings by the normalized Hsp90 readings for each sample lane, respectively. Fold change differences were then calculated by dividing all normalized HO-1 readings with the normalized WN Ctrl HO-1 reading for each Western blot separately. The resulted in all WN Ctrl HO-1 readings to be set to 1. As this eliminated any data variance in WN Ctrl group, it was treated as the baseline reference and thus, was disconsidered from the statistical analysis.
+
+The remaining three groups, well-nourished sand fly infected (WN SF), malnourished control (MN Ctrl) and mal-nourished sand fly infected (MN SF) were analyzed by the Kruskal-Wallis test, were analyzed by Kruskal-Wallis test followed post hoc by the Dunn's test for pairwise comparison. The output showed a p-value of `r ResFC[[names(DatFC) %like% FigNam]][["One-way model output"]][["p"]]`, which was `r if (ResFC[[names(DatFC) %like% FigNam]][["One-way model output"]][["p"]] < 0.05) { "statistically significant" } else { "not statistically significant" }`. The pairwise comparison by Dunn's test confirmed that `r if (ResFC[[names(DatFC) %like% FigNam]][["One-way model output"]][["p"]] < 0.05) { "statistically significant" } else { "no statistically significant" }` differences were observed between WN SF, MN Ctrl and MN SF .
+
+```{r table-55-dunns-test, include = TRUE, eval = TRUE}
+ResFC[[names(DatFC) %like% FigNam]][["Pairwise comparison output"]] %>%
+  .[,-1] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p", "p.adj"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 55**"),
+      subtitle = md("**Dunn's test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+It is of not that the median fold difference of the MN Ctrl group was `r FldSum[FldSum[["Diet"]] %in% "MN" & FldSum[["Route"]] %in% "CTRL", "median"]` higher than that of the WN Ctrl group, showing that more HO-1 was present in malnourished mice prior to infection, but that did not seem to have a profound impact on the median HO-1 fold differences compared to the WN Ctrl reference post infection by sand fly for malnourished compared to well-nourished mice(WN SF: `r FldSum[FldSum[["Diet"]] %in% "WN" & FldSum[["Route"]] %in% "SF", "median"]`, MN SF: `r FldSum[FldSum[["Diet"]] %in% "MN" & FldSum[["Route"]] %in% "SF", "median"]`).
+
+```{r update-table-number-figure-1h}
+TabNum <- TabNum + 1
+```

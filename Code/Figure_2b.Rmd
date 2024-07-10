@@ -1,0 +1,309 @@
+---
+title: "Figure 2b"
+author: "Johannes S. P. Doehl"
+date: "2024-06-20"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-2b, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-2b}
+# Figure name
+FigNam <- "Figure 2b"
+
+# Subset data that applies to this figure
+SubDat <- ResC2 %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::flatten(.)
+
+# Total mice used
+TotN <- SubDat[["Odds Ratios"]][["data"]]["Total", "Total"]
+
+# Subset power calculation that applies to this figure
+SubPwr <- PwrCalC2 %>%
+  .[names(.) %like% FigNam]
+```
+
+## Data analysis
+
+We analysed the frequency of *Leishmania donovani* dissemination to the spleen in a total of *N*=`r TotN` well-nourished (WN) and malnourished (MN) BALB/c mice infected intradermally either by "needle" injection or sand fly bite (SF) (*N*: `r paste(paste(SubDat[["Odds Ratios"]][["data"]][1:4, "Total"] %>% names(.), SubDat[["Odds Ratios"]][["data"]][1:4, "Total"], sep = "="), collapse = ", ")`) by contingency table analysis and logistic regression.
+
+### Contingency table
+
+Here, we opted for the Chi-square test as assumptions held. The analysis rendered a p-value of `r SubDat[["Chi-square test"]][,"p"]`, suggesting `r if (SubDat[["Chi-square test"]][,"p"] < 0.05) { "a statistically significant" } else { "no statistically significant" }` difference between groups. This was confirmed by the pairwise Chi-square test corrected by the Benjamin-Hochberg method (Appendix table `r TabNum + 1`). 
+
+```{r table-64-contingency-analysis, include = TRUE, eval = TRUE}
+SubDat[["Pairwise Chi-square test"]] %>%
+  dplyr::select(-any_of("method")) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 64**"),
+      subtitle = md("**Pairwise Chi-square test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) 
+```
+
+However, while we observed a `r paste0(round(1 / SubDat[["Odds Ratios"]][["measure"]]["WN_Needle", "estimate"], 2), "-fold")` reduction in parasite dissemination events in well-nourished animals infected by needle, compared to malnourished, needle inoculated ones, we also observed an increase in parasite dissemination both, malnourished and well-nourished mice, infected by sand fly bite, but only the malnourished group had significantly higher odds of dissemination (Appendix table `r TabNum + 2`). Applying a retrospective statistical power calculation showed that the sample size was to small to detect a meaningful statistical difference here and thus, our statistical power was somewhat below the standard 80% (Appendix table `r TabNum + 3`), but larger sample sizes were prohibitive due to cost and loss of life.
+
+```{r table-65-odds-ratios, include = TRUE, eval = TRUE}
+cbind(SubDat[["Odds Ratios"]][["measure"]], 
+      "p.value" = SubDat[["Odds Ratios"]][["p.value"]][,"fisher.exact"]) %>%
+  as.data.frame(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 65**"),
+      subtitle = md("**Odds Ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-66-power-calculation, include = TRUE, eval = TRUE}
+PwrCalC2 %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Parameters") %>%
+    tab_header(
+      title = md("**Appendix Table 66**"),
+      subtitle = md("**Retrospective Power Calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_spanner(
+      label = "Calculation for",
+      columns = c("Sample size", "Statistical power")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Sample size",
+        rows = "Total n")
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Statistical power",
+        rows = "Statistical power")
+    )
+```
+
+### Logistic regression
+
+```{r logistic-regression-summary-figure-2b}
+# Summary of logistic regression output
+LgrOut <- ResLgR %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .[["Model_summary"]]
+
+OddRat <- ResLgR %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .[["Odds_ratios"]]
+
+WldTst <- ResLgR %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .[["Wald_test"]]
+
+PwrCal <- PwrCalLgR %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]]
+
+ProbDis <- ResLgR %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  .[["Probability"]]
+```
+
+We applied a logistic regression model to the same data and assessed the two predictor variables "Diet" and "Route" without an interaction term to assess individual predictor contribution to the outcome. The data output showed that infection route had much more impact on whether parasites made it to the spleen or not (`r if (as.numeric(LgrOut["RouteSF", "Pr(>|z|)"]) < 0.0001) { "p<0.0001" } else { paste0("p=", LgrOut["RouteSF", "Pr(>|z|)"]) }`) than to the draining lymph nodes (Fig.2a). However, we observed a mere `r paste0(round(OddRat["RouteSF", "OR"], 2), "-fold")` increase in probability of parasite dissemination when sand flies were used for infection (Appendix table `r TabNum + 4`), which was equivalent to a `r OddRat["RouteSF", "Effect_size"]` effect size (Appendix table `r TabNum + 5`). There was also little indication in the data, that "Diet" on its own affected parasite capacity to disseminate to the spleen, indicating a mere `r paste0(round(OddRat["DietMN", "OR"], 2), "-fold")` increase in the probability of parasite dissemination (Appendix table `r TabNum + 4`), which was equivalent to a `r OddRat["DietMN", "Effect_size"]` effect size (Appendix table `r TabNum + 5`). Thus, neither predictor on its own achieved statistical significance according to Wald test (Appendix table `r TabNum + 6`). However, re-running the logistic regression model with an interaction term showed that the interaction between "Diet" and "Route" had much more potency than either predictor on its own, already hinted at by the odds ratios from the chi-square analysis, even though, the interaction term did not achieve statistical significance (Appendix table `r TabNum + 7`).
+
+```{r table-67-logistic-regression, include = TRUE, eval = TRUE}
+LgrOut %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 67**"),
+      subtitle = md("**Logistic regression output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-68-odds-ratio, include = TRUE, eval = TRUE}
+OddRat %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Predictor") %>%
+    tab_header(
+      title = md("**Appendix Table 68**"),
+      subtitle = md("**Odds Ratios**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) 
+```
+
+```{r table-69-wald-test, include = TRUE, eval = TRUE}
+lapply(WldTst, function(zz) {
+  
+  zz[["result"]][["chi2"]]
+}) %>%
+  bind_rows(., .id = "Predictor") %>%
+  mutate(., across("chi2", ~ round(.x, 2))) %>%
+  mutate(., across("df", ~ round(.x, 0))) %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 0.0001, "<0.0001", format(round(.x, 4), scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictor") %>%
+    tab_header(
+      title = md("**Appendix Table 69**"),
+      subtitle = md("**Wald test**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) 
+```
+
+```{r table-70-logistic-regression-with-interaction, include = TRUE, eval = TRUE}
+DatLgRSpt %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  glm(as.formula(
+      paste0("Event ~ ",
+             paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(.)],
+                     collapse = " * "))),
+      data = .,
+      family = binomial()) %>%
+  summary(.) %>%
+  coef(.) %>%
+  as.data.frame(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(where(is.numeric), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 70**"),
+      subtitle = md("**Logistic regression with interaction output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+A retrospective sample size and power calculation with the study data showed that the study was well underpowered for the logistic regression, as it was already for the contingency table analysis (Appendix table `r TabNum + 8`). The proposed minimum total sample size that permit both predictor a chance to identify a meaningful statistical different by this calculation was `r max(PwrCal[PwrCal$Calculation %in% "Sample_size", "TotalN"])`, which was ~`r round(max(PwrCal[PwrCal$Calculation %in% "Sample_size", "TotalN"]) / TotN, 0)`-times of the study's sample size, which was prohibitive due to cost and excessive loss of life. Even so, there was a good indication of potential biological significance with respect to interaction between "Diet" and "Route" of infection. Considering the predicted probability of parasite dissemination, it can be seen that parasite transmission by sand fly bite increased the predicted probability of parasite dissemination from needle inoculation for either nutritional status, respectively, which significant for well-nourished mice as can be seen from the confidence intervals (Appendix table `r TabNum + 9`). "Diet" on its own had a bigger impact on parasite dissemination for needle inoculation. Thus, there are good indications here that parasite transmission by sand fly had a meaningful biological effect on the probability of parasite dissemination to the spleen, which was aided by nutritional status more so for the needle inoculation than for the sand fly transmission.
+
+```{r table-71-power-calculation, include = TRUE, eval = TRUE}
+PwrCalLgR %>%
+  .[names(.) %like% FigNam] %>%
+  .[[1]] %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 71**"),
+      subtitle = md("**Retrospective power analyses**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "TotalN",
+        rows = c(1:2))
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Power",
+        rows = c(3:4))
+    )
+```
+
+```{r table-72-probability, include = TRUE, eval = TRUE}
+ProbDis %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 72**"),
+      subtitle = md("**Predicted probability of parasite dissemination**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "Predicted_Probability")
+    )
+```
+
+
+```{r update-table-number-figure-2b}
+TabNum <- TabNum + 9
+```

@@ -1,5 +1,5 @@
 ---
-title: "Data wrangling"
+title: "Statistical report: Malnutrition exacerbates pathogenesis of sand fly-transmitted *Leishmania donovani*"
 author: "Johannes S. P. Doehl"
 date: "2024-05-22"
 institute: "Vector Molecular Biology Section, Laboratory of Malaria and Vector Research, National Institute of Allergy and Infectious Diseases, National Institutes of Health, Rockville, MD, USA."
@@ -25,6 +25,7 @@ output:
 bibliography: 
   - "Bibliography-BIB.bib" # This is the name of the text file in which citations are embedded
   - "grateful-refs.bib" # For general package citation
+  - "references.bib" # This is the name of the text file in which citations are embedded
 biblio-syle: nature
 link_citations: true
 ---
@@ -42,26 +43,32 @@ Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around 
 # Load essential libraries
 library(easypackages) # allows loading and installation of multiple packages in one go
 
-libraries("broom",
+libraries("aod",
+          "betareg",
+          "broom",
           "car",
           "conflicted",
           "coxphf",
           "data.table",
           "DHARMa",
+          "effectsize",
           "emmeans",
           "epitools",
           "ggpubr",
           "glmmTMB",
+          "grateful",
           "gt",
           "Hmisc",
           "janitor",
           "LambertW",
+          "lmtest",
           "magrittr",
           "MASS",
           "metan",
           "multcomp",
           "lme4",
           "performance",
+          "pwrss",
           "rcompanion",
           "readxl",
           "rmarkdown",
@@ -318,7 +325,11 @@ ModSkeKur <- function(x, depVar, indVar, Type = "h") {
 ```
 
 ```{r dir-info}
-BibPath <- "C:/Users/doehljs/Documents/GitHub/Mal-nourished-study/"
+# Data directory
+BibPath <- "C:/Users/doehljs/Documents/GitHub/Malnutrition-exacerbates-pathogenesis-of-sand-fly-transmitted-Leishmania-donovani/"
+
+# Publication title
+StudTtl <- "Malnutrition exacerbates pathogenesis of sand fly-transmitted *Leishmania donovani*"
 ```
 
 ```{r loading-data}
@@ -336,31 +347,39 @@ RawDat <- read_all(paste0(BibPath, "Raw Data/", FilNam))
 
 Figures 2a,b & 3b,e 
 ~~~
-```{r chi-square-analysis-call, child = "Chi-square Analysis.Rmd"}
+```{r chi-square-analysis-call, child = "Analysis - Chi-square.Rmd"}
 ```
 
 ~~~{=comment}
 Figures 2a,b & 3b,e
 ~~~
-```{r binomial-logistic-regression-call, child = "Logistic regression.Rmd"}
+```{r binomial-logistic-regression-call, child = "Analysis - Logistic regression.Rmd"}
 ```
 
 ~~~{=comment}
-Figures 2c,d,e-f & 3d & 4a & S1c  
+Figures 2c,d, & 3d & S1c  
 ~~~
-```{r count-data-analysis-call, child = "Count Data Analysis.Rmd"}
+```{r count-data-analysis-call, child = "Analysis - Count Data.Rmd"}
 ```
 
 ~~~{=comment}
-Figure 1h 
+This is the ordered selection for the prompted option in the code chunk:
+Figure 1h
+4,0
 ~~~
-```{r fold-change-analysis-call, child = "Fold Change Analysis.Rmd"}
+```{r fold-change-analysis-call, child = "Analysis - Fold Change.Rmd"}
+```
+
+~~~{=comment}
+Figure 2e-f & 4a
+~~~
+```{r percent-data-analysis-call, child = "Analysis - Percentages.Rmd"}
 ```
 
 ~~~{=comment}
 Figure 3c
 ~~~
-```{r survival-analysis-call, child = "Survival Analysis.Rmd"}
+```{r survival-analysis-call, child = "Analysis - Survival.Rmd", eval = TRUE}
 ```
 
 ~~~{=comment}
@@ -378,30 +397,30 @@ Figure 4b           Figure 4c           Figure 4e-f         Figure S3C
                                         - 1,9,0,2,0
                                         - 1,9,0,1,0
 ~~~
-```{r two-way-analysis-call, child = "Two-way Analysis.Rmd"}
+```{r two-way-analysis-call, child = "Analysis - Two-way.Rmd"}
 ```
 
 ~~~{=comment}
 Figures 1b-c        Figures 1e-f
--                   -
--                   -
--                   -
+- 1,9,0,2,0         - 0,2,0
+- 1,9,0,2,0         - 1,9,0,3,0
+- 1,9,0,2,0         - 1,9,0,2,0
 ~~~
-```{r three-way-analysis-call, child = "Three-way Analysis.Rmd"}
+```{r three-way-analysis-call, child = "Analysis - Three-way.Rmd"}
 ```
 
 ~~~{=comment}
 Figure S1a
 - 0,0,2,0
 ~~~
-```{r two-way-mixed-analysis-call, child = "Two-way Mixed Analysis.Rmd"}
+```{r two-way-mixed-analysis-call, child = "Analysis - Two-way Mixed.Rmd"}
 ```
 
 ~~~{=comment}
 Figure 3a
--
+- 1,9,0,0,2,0
 ~~~
-```{r three-way-mixed-analysis-call, child = "Three-way Mixed Analysis.Rmd"}
+```{r three-way-mixed-analysis-call, child = "Analysis - Three-way Mixed.Rmd"}
 ```
 
 ~~~{=comment}
@@ -413,7 +432,7 @@ This is the start of the rendered document.
 ~~~{=comment}
 Quick summary of the statistics report
 ~~~
-```{r main-body, child = "Main_Body.Rmd"}
+```{r summary, child = "Summary.Rmd", eval = FALSE}
 ```
 
 # Main Body
@@ -421,7 +440,7 @@ Quick summary of the statistics report
 ~~~{=comment}
 General statements about procedure
 ~~~
-```{r main-body, child = "Main_Body.Rmd"}
+```{r main-body, child = "Main_Body.Rmd", eval = TRUE}
 ```
 
 
@@ -431,7 +450,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-1-b-c, child = "Figure_1a_c.Rmd", eval = FALSE}
+```{r figure-1-b-c, child = "Figure_1b_c.Rmd", eval = TRUE}
 ```
 
 
@@ -439,7 +458,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-1-e-f, child = "Figure_1e_f.Rmd", eval = FALSE}
+```{r figure-1-e-f, child = "Figure_1e_f.Rmd", eval = TRUE}
 ```
 
 
@@ -447,7 +466,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-1-h, child = "Figure_1h.Rmd", eval = FALSE}
+```{r figure-1-h, child = "Figure_1h.Rmd", eval = TRUE}
 ```
 
 
@@ -457,7 +476,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-2-a, child = "Figure_2a.Rmd", eval = FALSE}
+```{r figure-2-a, child = "Figure_2a.Rmd", eval = TRUE}
 ```
 
 
@@ -465,7 +484,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-2-b, child = "Figure_2b.Rmd", eval = FALSE}
+```{r figure-2-b, child = "Figure_2b.Rmd", eval = TRUE}
 ```
 
 
@@ -473,7 +492,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-2-c, child = "Figure_2c.Rmd", eval = FALSE}
+```{r figure-2-c, child = "Figure_2c.Rmd", eval = TRUE}
 ```
 
 
@@ -481,7 +500,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-2-d, child = "Figure_2d.Rmd", eval = FALSE}
+```{r figure-2-d, child = "Figure_2d.Rmd", eval = TRUE}
 ```
 
 
@@ -489,7 +508,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-2-e, child = "Figure_2e.Rmd", eval = FALSE}
+```{r figure-2-e, child = "Figure_2e.Rmd", eval = TRUE}
 ```
 
 
@@ -497,7 +516,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-2-f, child = "Figure_2f.Rmd", eval = FALSE}
+```{r figure-2-f, child = "Figure_2f.Rmd", eval = TRUE}
 ```
 
 
@@ -507,7 +526,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-3-a, child = "Figure_3a.Rmd", eval = FALSE}
+```{r figure-3-a, child = "Figure_3a.Rmd", eval = TRUE}
 ```
 
 
@@ -515,7 +534,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-3-b, child = "Figure_3b.Rmd", eval = FALSE}
+```{r figure-3-b, child = "Figure_3b.Rmd", eval = TRUE}
 ```
 
 
@@ -523,7 +542,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-3-c, child = "Figure_3c.Rmd", eval = FALSE}
+```{r figure-3-c, child = "Figure_3c.Rmd", eval = TRUE}
 ```
 
 
@@ -531,7 +550,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-3-d, child = "Figure_3d.Rmd", eval = FALSE}
+```{r figure-3-d, child = "Figure_3d.Rmd", eval = TRUE}
 ```
 
 
@@ -539,7 +558,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-3-e, child = "Figure_3e.Rmd", eval = FALSE}
+```{r figure-3-e, child = "Figure_3e.Rmd", eval = TRUE}
 ```
 
 
@@ -583,7 +602,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-S1-a, child = "Figure_S1a.Rmd", eval = FALSE}
+```{r figure-S1-a, child = "Figure_S1a.Rmd", eval = TRUE}
 ```
 
 
@@ -591,5 +610,15 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-S1-c, child = "Figure_S1c.Rmd", eval = FALSE}
+```{r figure-S1-c, child = "Figure_S1c.Rmd", eval = TRUE}
+```
+
+
+## Supplementary Figure 3
+
+### Panel c
+
+~~~{=comment}
+~~~
+```{r figure-S3-c, child = "Figure_S1a.Rmd", eval = FALSE}
 ```

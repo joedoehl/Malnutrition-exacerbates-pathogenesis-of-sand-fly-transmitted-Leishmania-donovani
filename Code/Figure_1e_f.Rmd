@@ -1,0 +1,1083 @@
+---
+title: "Figure 1b and c"
+author: "Johannes S. P. Doehl"
+date: "2024-06-07"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-1e-f, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-1e-f}
+# Figure name
+FigNam <- "Figure 1e-f"
+
+# Vector of cell names used for subgrouping
+SubFigNam <- Res3w %>%
+  names(.) %>%
+  sub(".*- ", "", .) %>%
+  unique
+
+# Subset data that applies to this figure
+SubDat <- Res3w %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(SubFigNam)
+
+# Group N
+GrpN <- lapply(SubFigNam, function(zz) {
+  
+  unique(Res3w[[paste(FigNam, "3w -", zz)]][["Summary"]][["n"]])
+  
+}) %>%
+  unlist(.) %>%
+  unique(.)
+
+# Total N per experiement
+TotN <- lapply(SubFigNam, function(zz){
+  
+  sum(Res3w[[paste(FigNam, "3w -", zz)]][["Summary"]][["n"]])
+  
+}) %>%
+  purrr::set_names(SubFigNam)
+
+# List names
+ListNam <- paste(FigNam, "3w -", SubFigNam)
+```
+
+## Data analysis
+
+Figure 1 e and f present the same samples as shown in figure 1b and c with added difference that only IL1B^+^ cells were counted. Again, the outcome variable of total IL1B^+^ `r SubFigNam[2]` counts and separately, IL1B^+^ `r SubFigNam[3]` and `r SubFigNam[1]` counts from *N*=`r TotN` pools of single cell suspensions, respectively, prepared from BALB/c mouse ears infected with *Leishmania donovani* by needle or sand flies (SF) delivery at 24 h and 72 h post sand fly bites. Please, refer to the methods section of the publication for more details on sample preparation. Note that different mice were sampled at 24 h and 72 h post infection, which meant that this dataset satisfied the independence of data points and therefore, did not represent a repeatedly measured dataset. With the time point variable (Time_point), this dataset contained two more predictor variables: Mouse "Diet" (well-nourished [WN], malnourished [MN]) and infection "Route" (uninfected control, needle delivery [Needle], sand fly delivery [SF]). Based on this information, a three-way analysis was indicated.
+
+Thus, we assessed the data for compliance with assumptions for a three-way ANOVA:
+
+-   Data normality
+-   Homogeneity of variance
+-   No significant outliers
+
+Initial assumption assessment indicated that data transformation was required to meet assumptions for a three-way ANOVA only for the `r SubFigNam[3]` counts. Thus, we settled for a Box-Cox power transformation. Conversely, `r SubFigNam[1]` did not need to be transformed to apply a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]`, while `r SubFigNam[3]` were analyzed by `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` post Box-Cox power transformation. The data transformation resulted in different data distributions and variances than appear in the main figure in the publication.
+
+### Assumption analyses
+
+#### Data normality
+
+The assessment of the transformed data distribution for each group was conducted by Shpiro-Wilks test and QQ-plot for counts of `r SubFigNam[2]`, `r SubFigNam[3]` and `r SubFigNam[1]` separately. Note that all groups of all datasets consisted of *N*=`r GrpN` pools of mouse ear single-cell suspensions, which made it difficult to assess data distribution reliably by Shapiro-Wilks test.
+
+##### `r SubFigNam[2]`
+
+In spite of assessment limitations due to small group sizes, we concluded based on Shpiro-Wilks test (Table `r TabNum + 1`) and QQ-pots (Fig.1e-f-1) that not all groups of the dataset were approximately normal distributed.
+
+```{r table-28-myeloid-cells, include = TRUE, eval = TRUE}
+# Data normality assumption
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[2]]][["Data_Normality_Assumption"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 28**"),
+      subtitle = md("**Myeloid cells: Univariate Shapito-Wilks test results**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r qq-plot-figure-1e-f-myeloid-cells, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1e-f-1: QQ-plots of myeloid cell counts split into groups by predictor variables"}
+SubDat[[SubFigNam[2]]][["QQ plot: by groups"]]
+```
+
+##### `r SubFigNam[3]`
+
+In spite of assessment limitations due to small group sizes, We concluded based on Shpiro-Wilks test (Table `r TabNum + 2`) and QQ-pots (Fig.1e-f-2) that all groups of the dataset were approximately normal distributed.
+
+```{r table-29-neutrophils, include = TRUE, eval = TRUE}
+# Data normality assumption
+
+# Data table: Neutrophils
+SubDat[[SubFigNam[3]]][["Data_Normality_Assumption"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 29**"),
+      subtitle = md("**Neutrophils: Univariate Shapito-Wilks test results**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r qq-plot-figure-1e-f-neutrophils, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1e-f-2: QQ-plots of neutrophil counts split into groups by predictor variables"}
+SubDat[[SubFigNam[3]]][["QQ plot: by groups"]]
+```
+
+##### `r SubFigNam[1]`
+
+In spite of assessment limitations due to small group sizes, We concluded based on Shpiro-Wilks test (Table `r TabNum + 3`) and QQ-pots (Fig.1e-f-3) that all groups of the myeloid cell dataset were approximately normal distributed.
+
+```{r table-30-monocytes, include = TRUE, eval = TRUE}
+# Data normality assumption
+
+# Data table: Monocytes
+SubDat[[SubFigNam[1]]][["Data_Normality_Assumption"]] %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 30**"),
+      subtitle = md("**Monocytes: Univariate Shapito-Wilks test results**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r qq-plot-figure-1e-f-monocytes, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1e-f-3: QQ-plots of monocyte counts split into groups by predictor variables"}
+SubDat[[SubFigNam[1]]][["QQ plot: by groups"]]
+```
+
+#### Homogeneity of variance
+
+The assessment of homogeneity of variance was also conducted for myeloid cell, neutrophil and monocyte counts separately. We employed a Levene's test for the whole model for each dataset. The p-value for the test suggested that the assumption of homogeneity of variance `r if (SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[2]` (`r if (SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`), `r if (SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[3]` (`r if (SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`), and `r if (SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[1]` (`r if (SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`).
+
+#### Outliers
+
+It can be difficult to determine outliers in small datasets reliably as the analysis is dependent on the interquartile range of the data per group. We attempted it anyway, but increased the coefficient from 1.5 to 3 for less stringency. We found `r nrow(SubDat[[SubFigNam[2]]][["Outliers"]])` outliers in the `r SubFigNam[2]` dataset (Table `r TabNum + 4`), `r nrow(SubDat[[SubFigNam[3]]][["Outliers"]])` outliers in the `r SubFigNam[3]` dataset (Table `r TabNum + 5`), and `r nrow(SubDat[[SubFigNam[1]]][["Outliers"]])` outliers in the `r SubFigNam[1]` dataset (Table `r TabNum + 6`).
+
+```{r table-31-myeloid-cells, include = TRUE, eval = TRUE}
+# Data outliers
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[2]]][["Outliers"]] %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 31**"),
+      subtitle = md("**Myeloid cells: List of possible outliers**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r table-32-neutrophils, include = TRUE, eval = TRUE}
+# Data outliers
+
+# Data table: Neutrophils
+SubDat[[SubFigNam[3]]][["Outliers"]] %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 32**"),
+      subtitle = md("**Neutrophils: List of possible outliers**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r table-33-monocytes, include = TRUE, eval = TRUE}
+# Data outliers
+
+# Data table: Monocytes
+SubDat[[SubFigNam[1]]][["Outliers"]] %>%
+  # Build a table
+  gt(rowname_col = "Group") %>%
+    tab_stubhead(label = "Groups") %>%
+    tab_header(
+      title = md("**Appendix Table 33**"),
+      subtitle = md("**Monocytes: List of possible outliers**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+### Three-way analysis
+
+#### `r SubFigNam[2]`
+
+Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[2]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[2]` counts per pooled ear single-cell suspension (Table `r TabNum + 7`). The appropriateness of the `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` was confirmed by checking the model residuals for normal distribution (Shapiro-Wilks test: `r if (SubDat[[SubFigNam[2]]][["Residual_Normality_Assumption"]][["p.value"]] < 0.0001) { "p<0.0001" } else { format(round(SubDat[[SubFigNam[2]]][["Residual_Normality_Assumption"]][["p.value"]], 4), scientific = FALSE) }`; Fig.1e-f-4). 
+
+```{r qq-plot-figure-1e-f-myeloid-cell-residuals, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1e-f-4: QQ-plots of monocyte counts split into groups by predictor variables"}
+SubDat[[SubFigNam[2]]][["QQ plotof residuals"]]
+```
+
+The test output of the `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` showed that only the "Route" and "Time_point" predictors were statistically significant factors, while the interaction between Time_point and Diet was statistically significant, too. The importance of the "Time_point" predictor was a significant difference for the IL1B^+^ `r SubFigNam[2]` counts, compared to observations in figure 1b & c, when IL1B^+^ was not considered.
+
+```{r table-34-three-way-anova, include = TRUE, eval = TRUE}
+# Three-way ANOVA
+
+# Data table: Myeloid cells
+if (SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",] == "Simple linear regression") {
+  
+  ThrWay <- SubDat[[SubFigNam[2]]][["3-way_ANOVA"]] %>%
+    .[!rownames(.) %in% "Residuals",] %>%
+    tibble::rownames_to_column(., var = "Predictor") %>%
+    as.data.frame(.) %>%
+    mutate(., "sig." = .[["Pr(>F)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+    mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+    mutate(., across("Pr(>F)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE))))
+  
+} else if (SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",] == "Robust three-way ANOVA") {
+  ThrWay <- SubDat[[SubFigNam[2]]][["3-way_ANOVA"]] %>%
+    capture.output(.) %>%
+    trimws(.) %>%
+    strsplit(., " ") %>%
+    lapply(., function(yy) {
+      
+      yy[yy != ""]
+    }) %>%
+    .[c(5:11)] %>%
+    lapply(., function(zz) {
+      
+      zz %>%
+        as.data.frame(.) %>%
+        t(.) %>%
+        as.data.frame(.)
+    }) %>%
+    bind_rows(.) %>%
+    set_colnames(c("Predictor", "value", "p.value")) %>%
+    tibble::remove_rownames(.) %>%
+    mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+    mutate(., "sig." = .[["p.value"]] %>%
+             symnum(.,
+                    cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                    symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+    mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+    mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE))))
+}
+
+ ThrWay %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 34**"),
+      subtitle = md("**Myeloid cells: Robust three-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+As we performed a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]`, we were not able to analyze main and simple simple effects of predictors, but moved immediately to perform a pairwise comparison. We applied a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]` and the output showed that at 24 h post infection, the sand fly infection route was statistically significant from the control and needle inoculum in the well-nourished (WN) group (Table `r TabNum + 10`). At 72 h, the sand fly infection route was statistically significant from the control in the malnourished group. Further, statistically significant difference were observed between well-nourished and malnourished mice inoculated by needle at 24 h post infection and infected by sand fly at 72 h post infection.
+
+```{r table-37-pairwise-comparison, include = TRUE, eval = TRUE}
+# Pairwise comparison
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[2]]][["Pairwise_simple_simple_comparison"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[2]]][["Pairwise_simple_simple_comparison"]][["Pairwise comparison"]] %>%
+  as.data.frame(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+             symnum(.,
+                    cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                    symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "Pairing") %>%
+    tab_header(
+      title = md("**Appendix Table 37**"),
+      subtitle = md("**Myeloid cells: Pairwise comparison by Estimated marginal means analysis**")
+    ) 
+```
+
+#### `r SubFigNam[3]`
+
+Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[3]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[3]` count per pooled ear single-cell suspension (Table `r TabNum + 11`). The test output showed that, as for `r SubFigNam[2]` counts, "Route" and "Time_point" were both statistically significant predictors, while here, their interaction was also statistically meaningful.
+
+```{r table-38-three-way-anova, include = TRUE, eval = TRUE}
+# Three-way ANOVA
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[3]]][["3-way_ANOVA"]] %>%
+  capture.output(.) %>%
+  trimws(.) %>%
+  strsplit(., " ") %>%
+  lapply(., function(yy) {
+    
+    yy[yy != ""]
+  }) %>%
+  .[c(5:11)] %>%
+  lapply(., function(zz) {
+    
+    zz %>%
+      as.data.frame(.) %>%
+      t(.) %>%
+      as.data.frame(.)
+  }) %>%
+  bind_rows(.) %>%
+  set_colnames(c("Predictor", "value", "p.value")) %>%
+  tibble::remove_rownames(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 38**"),
+      subtitle = md("**Neutrophils: Robust three-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. After adjustment of p-values for multiple tests, we observed statistically significant differences for the "Time_point" variable, when the data was split by "Route" or by "Diet"; in well-nourished group for Route, Time_point and their interaction were statistically meaningful, while for the malnourished state, there was no meaningful interaction between these predictors when the data was split by "Diet"; and for "Route was only meaningful at 24 h post infection, when the data was split by Time_point (Table `r TabNum + 12`).
+
+```{r table-39-two-way-anova, include = TRUE, eval = TRUE}
+# Two-way ANOVA
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[3]]][["2-way_ANOVA_post_hoc"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[3]]][["2-way_ANOVA_post_hoc"]] %>%
+  lapply(., function(qq) {
+    qq %>%
+      set_colnames(c("Grouper", "Predictor", "value", "p.value", "Sig."))
+  }) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  adjust_pvalue(method = "BH") %>%
+  mutate(., "sig." = .[["p.value.adj"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 4), scientific = FALSE))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.001, "<0.001", .x))) %>%
+  # Build a table
+  gt(rowname_col = "Grouper") %>%
+    tab_stubhead(label = "Grouper") %>%
+    tab_header(
+      title = md("**Appendix Table 39**"),
+      subtitle = md("**Neutrophils: Robust two-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = GrpNam[1],
+      rows = c(1:6)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[2],
+      rows = c(7:12)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[3],
+      rows = c(13:18)
+    )
+```
+
+For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed "Time_point" post infestation was statistically significant across the board, while "Route" was only statistically significant during the 24 h time point. "Diet" played not significant role as a predictor (Table `r TabNum + 13`).
+
+```{r table-40-one-way-anova, include = TRUE, eval = TRUE}
+# One-way ANOVA
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[3]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[3]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+  lapply(., function(qq) {
+    
+    colnames(qq)[c(1,2)] <- c("Predictor_1", "Predictor_2")
+    
+    qq
+    
+  }) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  adjust_pvalue(method = "BH") %>%
+  mutate(., "sig." = .[["p.value.adj"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value", "p.value.adj"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 40**"),
+      subtitle = md("**Neutrophils: Robust one-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = GrpNam[1],
+      rows = c(1:4)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[2],
+      rows = c(5:8)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[3],
+      rows = c(9:12)
+    )  %>%
+    cols_hide(columns = c(effsize_ci_lower, effsize_ci_upper, Sig.))
+```
+
+For the pairwise comparison, we applied a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. As all three factors where dichotomous, the pairwise comparison reflected the one-way ANVOA results (Table `r TabNum + 14`).
+
+```{r table-41-pairwise-comparison, include = TRUE, eval = TRUE}
+# Pairwise comparison
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[3]]][["Pairwise_simple_simple_comparison"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[3]]][["Pairwise_simple_simple_comparison"]] %>%
+  lapply(., function(qq) {
+    
+    colnames(qq)[c(1,2)] <- c("Predictor_1", "Predictor_2")
+    
+    qq
+    
+  }) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 41**"),
+      subtitle = md("**Neutrophils: Pairwise comparison by Linear Contrast Expression**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = GrpNam[1],
+      rows = c(1:4)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[2],
+      rows = c(5:8)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[3],
+      rows = c(9:12)
+    )
+```
+
+#### `r SubFigNam[1]`
+
+Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[1]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[1]` count per pooled ear single-cell suspension (Table `r TabNum + 15`). As for `r SubFigNam[2]` and `r SubFigNam[3]` counts, "Route" and "Time_point" were statistically significant predictors. However, not significant interaction between predictors was observed for `r SubFigNam[1]` counts.
+
+```{r table-42-three-way-anova, include = TRUE, eval = TRUE}
+# Three-way ANOVA
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[1]]][["3-way_ANOVA"]] %>%
+  capture.output(.) %>%
+  trimws(.) %>%
+  strsplit(., " ") %>%
+  lapply(., function(yy) {
+    
+    yy[yy != ""]
+  }) %>%
+  .[c(5:11)] %>%
+  lapply(., function(zz) {
+    
+    zz %>%
+      as.data.frame(.) %>%
+      t(.) %>%
+      as.data.frame(.)
+  }) %>%
+  bind_rows(.) %>%
+  set_colnames(c("Predictor", "value", "p.value")) %>%
+  tibble::remove_rownames(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 42**"),
+      subtitle = md("**Monocytes: Robust three-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. After adjustment of p-values for multiple tests, we observed statistically significant differences for the "Time_point" variable, when the data was split by "Route" or by "Diet"; in well-nourished and mal-nourished groups we observed statistical significance for "Route" and "Time_point", while no significant interactions were observed when the data was split by "Diet"; and for "Route" was meaningful at both, 24 h and 72 h post infection, when the data was split by Time_point (Table `r TabNum + 16`). Overall, "Diet" played not meaning role as a predictor.
+
+```{r table-43-two-way-anova, include = TRUE, eval = TRUE}
+# Two-way ANOVA
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[1]]][["2-way_ANOVA_post_hoc"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[1]]][["2-way_ANOVA_post_hoc"]] %>%
+  lapply(., function(qq) {
+    qq %>%
+      set_colnames(c("Grouper", "Predictor", "value", "p.value", "Sig."))
+  }) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  adjust_pvalue(method = "BH") %>%
+  mutate(., "sig." = .[["p.value.adj"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 4), scientific = FALSE))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.001, "<0.001", .x))) %>%
+  # Build a table
+  gt(rowname_col = "Grouper") %>%
+    tab_stubhead(label = "Grouper") %>%
+    tab_header(
+      title = md("**Appendix Table 43**"),
+      subtitle = md("**Monovytes: Robust two-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = GrpNam[1],
+      rows = c(1:6)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[2],
+      rows = c(7:12)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[3],
+      rows = c(13:18)
+    )
+```
+
+For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed "Time_point" post infestation was statistically significant across the board with the exception for malnourished individuals inoculated by needle, while "Route" was only statistically significant during the within the well-nourished group at either time point. "Diet" was only statistically significant for the needle inoculated groups at 72 h post infection (Table `r TabNum + 17`).
+
+```{r table-44-one-way-anova, include = TRUE, eval = TRUE}
+# One-way ANOVA
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[1]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[1]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
+  lapply(., function(qq) {
+    
+    colnames(qq)[c(1,2)] <- c("Predictor_1", "Predictor_2")
+    
+    qq
+    
+  }) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  adjust_pvalue(method = "BH") %>%
+  mutate(., "sig." = .[["p.value.adj"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 44**"),
+      subtitle = md("**Monocytes: Robust one-way ANOVA**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = GrpNam[1],
+      rows = c(1:4)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[2],
+      rows = c(5:8)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[3],
+      rows = c(9:12)
+    ) %>%
+    cols_hide(columns = c(effsize_ci_lower, effsize_ci_upper, Sig.))
+```
+
+For the pairwise comparison, we applied a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. As all three factors where dichotomous, the pairwise comparison reflected the one-way ANVOA results (Table `r TabNum + 18`).
+
+```{r table-45-pairwise-comparison, include = TRUE, eval = TRUE}
+# Pairwise comparison
+
+# Get grouping factor
+GrpNam <- SubDat[[SubFigNam[1]]][["Pairwise_simple_simple_comparison"]] %>%
+  names(.)
+
+# Data table: Myeloid cells
+SubDat[[SubFigNam[1]]][["Pairwise_simple_simple_comparison"]] %>%
+  lapply(., function(qq) {
+    
+    colnames(qq)[c(1,2)] <- c("Predictor_1", "Predictor_2")
+    
+    qq
+    
+  }) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 45**"),
+      subtitle = md("**Monocytes: Pairwise comparison by Linear Contrast Expression**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = GrpNam[1],
+      rows = c(1:4)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[2],
+      rows = c(5:8)
+    ) %>%
+    tab_row_group(
+      label = GrpNam[3],
+      rows = c(9:12)
+    )
+```
+
+### Statistical power
+
+Considering the small group *N*=`r GrpN`, it stood to reason that the study design was statistically underpowered by necessity to keep animal number and costs manageable. Thus, we performed a retrospective power analysis on the data by cell-type group to explore this.
+
+#### Effect size estimation based on partial eta^2^
+
+Effect sizes were calculated by predictor and the different potential interaction combinations of them. Appendix tables `r TabNum + 19` to `r TabNum + 21` show the respective effect sizes. Note that upper ends of the confidence intervals were automatically set to 1 for this type of calculation. Large effect sizes reflected statistically meaningful differences in the data analysis. The partial eta^2^ values from the effect size calculation were then used to the retrospective power calculations.
+
+```{r table-46-myeloid-cells, include = TRUE, eval = TRUE}
+# Effect size of Myeloid cells
+PwrCal3w[[which(names(PwrCal3w) %like% FigNam & names(PwrCal3w) %like% SubFigNam[2])]][["Effect_Size"]] %>%
+  as.data.frame(.) %>%
+  dplyr::select(!CI) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 4), scientific = FALSE))) %>%
+  mutate(., "Effect Size" = ifelse(.[["Eta2_partial"]] < 0.01, "very small",
+                                           ifelse(.[["Eta2_partial"]] < 0.06, "small",
+                                                  ifelse(.[["Eta2_partial"]] < 0.14, "medium", "large")))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 46**"),
+      subtitle = md("**Myeloid cells: Effect size estimation**")
+    )
+```
+
+```{r table-47-neutrophils, include = TRUE, eval = TRUE}
+# Effect size of Neutrophils
+PwrCal3w[[which(names(PwrCal3w) %like% FigNam & names(PwrCal3w) %like% SubFigNam[3])]][["Effect_Size"]] %>%
+  as.data.frame(.) %>%
+  dplyr::select(!CI) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 4), scientific = FALSE))) %>%
+  mutate(., "Effect Size" = ifelse(.[["Eta2_partial"]] < 0.01, "very small",
+                                           ifelse(.[["Eta2_partial"]] < 0.06, "small",
+                                                  ifelse(.[["Eta2_partial"]] < 0.14, "medium", "large")))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 47**"),
+      subtitle = md("**Neutrophils: Effect size estimation**")
+    )
+```
+
+```{r table-48-monocytes, include = TRUE, eval = TRUE}
+# Effect size of Monocytes
+PwrCal3w[[which(names(PwrCal3w) %like% FigNam & names(PwrCal3w) %like% SubFigNam[1])]][["Effect_Size"]] %>%
+  as.data.frame(.) %>%
+  dplyr::select(!CI) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 4), scientific = FALSE))) %>%
+  mutate(., "Effect Size" = ifelse(.[["Eta2_partial"]] < 0.01, "very small",
+                                           ifelse(.[["Eta2_partial"]] < 0.06, "small",
+                                                  ifelse(.[["Eta2_partial"]] < 0.14, "medium", "large")))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 48**"),
+      subtitle = md("**Monocytes: Effect size estimation**")
+    )
+```
+
+#### Retrospective minimum total sample size estimation for 80% power
+
+The accepted rule of thumb is to have at least 80% (0.8 as ratio) statistical power in once data. For small mean differences within data of a high level of complexity, this is often hard to achieve, because of cost and ability to manage large sample sizes. For `r SubFigNam[2]`, the predictors "Route" and "Time_point" as much as the interaction "Diet:Time_point" resulted in optimal sample sizes that were within the total sample size of *N*=`r TotN` (Appendix table `r TabNum + 22`). The large proposed sample sizes for "Diet" on its own and within most of its interactions suggested little statistically significant difference between groups with respect to "Diet".
+
+```{r table-49-myeloid-cells, include = TRUE, eval = TRUE}
+# Effect size of Myeloid cells
+PwrCal <- PwrCal3w[[which(names(PwrCal3w) %like% FigNam & 
+                          names(PwrCal3w) %like% SubFigNam[2])]][["Sample_Size_for_80%_Power"]] %>%
+  bind_rows(., .id = "Predictors")
+
+PwrCal %>%
+  # Build a table
+  gt(rowname_col = "effect") %>%
+    tab_stubhead(label = "Effect") %>%
+    tab_header(
+      title = md("**Appendix Table 49**"),
+      subtitle = md("**Myeloid Cells: Minimum optimal sample size calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = PwrCal[13, "Predictors"],
+      rows = c(13:19)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[10, "Predictors"],
+      rows = c(10:12)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[7, "Predictors"],
+      rows = c(7:9)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[4, "Predictors"],
+      rows = c(4:6)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[3, "Predictors"],
+      rows = c(3)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[2, "Predictors"],
+      rows = c(2)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[1, "Predictors"],
+      rows = c(1)
+    ) %>%
+    cols_hide(columns = Predictors)
+```
+
+Similar observation were made for `r SubFigNam[3]` counts, but here the interaction "Route:Time_point" was within the total sample size of *N*=`r TotN` (Appendix Table `r TabNum + 23`). The involvement of "Diet" produced large minimum sample sizes again, suggesting that no true difference may be observed here with respect to "Diet".
+
+```{r table-50-neutrophilss, include = TRUE, eval = TRUE}
+# Effect size of Neutrophils
+PwrCal <- PwrCal3w[[which(names(PwrCal3w) %like% FigNam & 
+                          names(PwrCal3w) %like% SubFigNam[3])]][["Sample_Size_for_80%_Power"]] %>%
+  bind_rows(., .id = "Predictors")
+
+PwrCal %>%
+  # Build a table
+  gt(rowname_col = "effect") %>%
+    tab_stubhead(label = "Effect") %>%
+    tab_header(
+      title = md("**Appendix Table 50**"),
+      subtitle = md("**Neutrophils: Minimum optimal sample size calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = PwrCal[13, "Predictors"],
+      rows = c(13:19)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[10, "Predictors"],
+      rows = c(10:12)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[7, "Predictors"],
+      rows = c(7:9)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[4, "Predictors"],
+      rows = c(4:6)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[3, "Predictors"],
+      rows = c(3)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[2, "Predictors"],
+      rows = c(2)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[1, "Predictors"],
+      rows = c(1)
+    ) %>%
+    cols_hide(columns = Predictors)
+```
+
+For `r SubFigNam[1]` counts, the same observations were true as for `r SubFigNam[2]` counts with the exception that "Diet" did not have a major detrimental effect on predicted minimum sample size for the three way interaction ("Diet:Route:Time_point"; Appendix Table `r TabNum + 24`).
+
+```{r table-51-monocytes, include = TRUE, eval = TRUE}
+# Effect size of Monocytes
+PwrCal <- PwrCal3w[[which(names(PwrCal3w) %like% FigNam & 
+                          names(PwrCal3w) %like% SubFigNam[1])]][["Sample_Size_for_80%_Power"]] %>%
+  bind_rows(., .id = "Predictors")
+
+PwrCal %>%
+  # Build a table
+  gt(rowname_col = "effect") %>%
+    tab_stubhead(label = "Effect") %>%
+    tab_header(
+      title = md("**Appendix Table 51**"),
+      subtitle = md("**Monocytes: Minimum optimal sample size calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = PwrCal[13, "Predictors"],
+      rows = c(13:19)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[10, "Predictors"],
+      rows = c(10:12)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[7, "Predictors"],
+      rows = c(7:9)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[4, "Predictors"],
+      rows = c(4:6)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[3, "Predictors"],
+      rows = c(3)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[2, "Predictors"],
+      rows = c(2)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[1, "Predictors"],
+      rows = c(1)
+    ) %>%
+    cols_hide(columns = Predictors)
+```
+
+#### Retrospective calculation of statistical power in our data analysis
+
+The observations from the retrospective minimum sample size calculation was reflected in the power calculation for our data. For `r SubFigNam[2]` counts, only "Route" and "Time_point" and the interaction of "Diet:Time_point" had sufficient statistical power to have a change to find statistically meaning differences in the data (Appendix Table `r TabNum + 25`).
+
+```{r table-52-myeloid-cells, include = TRUE, eval = TRUE}
+# Effect size of Myeloid cells
+PwrCal <- PwrCal3w[[which(names(PwrCal3w) %like% FigNam & 
+                          names(PwrCal3w) %like% SubFigNam[2])]][["Statistical_Power_of_Data"]] %>%
+  bind_rows(., .id = "Predictors")
+
+PwrCal %>%
+  # Build a table
+  gt(rowname_col = "effect") %>%
+    tab_stubhead(label = "Effect") %>%
+    tab_header(
+      title = md("**Appendix Table 52**"),
+      subtitle = md("**Myeloid Cells: Statistical power of data**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = PwrCal[13, "Predictors"],
+      rows = c(13:19)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[10, "Predictors"],
+      rows = c(10:12)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[7, "Predictors"],
+      rows = c(7:9)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[4, "Predictors"],
+      rows = c(4:6)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[3, "Predictors"],
+      rows = c(3)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[2, "Predictors"],
+      rows = c(2)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[1, "Predictors"],
+      rows = c(1)
+    ) %>%
+    cols_hide(columns = Predictors)
+```
+
+For `r SubFigNam[3]` counts, "Route" and "Time_points as much as their interaction had >80% statistical power, while the interaction "Diet:Time_point" was close to 80% statistical power (Appendix Table `r TabNum + 26`).
+
+```{r table-53-neutrophilss, include = TRUE, eval = TRUE}
+# Effect size of Neutrophils
+PwrCal <- PwrCal3w[[which(names(PwrCal3w) %like% FigNam & 
+                          names(PwrCal3w) %like% SubFigNam[3])]][["Statistical_Power_of_Data"]] %>%
+  bind_rows(., .id = "Predictors")
+
+PwrCal %>%
+  # Build a table
+  gt(rowname_col = "effect") %>%
+    tab_stubhead(label = "Effect") %>%
+    tab_header(
+      title = md("**Appendix Table 53**"),
+      subtitle = md("**Neutrophils: Statistical power of data**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = PwrCal[13, "Predictors"],
+      rows = c(13:19)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[10, "Predictors"],
+      rows = c(10:12)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[7, "Predictors"],
+      rows = c(7:9)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[4, "Predictors"],
+      rows = c(4:6)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[3, "Predictors"],
+      rows = c(3)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[2, "Predictors"],
+      rows = c(2)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[1, "Predictors"],
+      rows = c(1)
+    ) %>%
+    cols_hide(columns = Predictors)
+```
+
+Similar to `r SubFigNam[3]` counts, for `r SubFigNam[1]` counts, "Route" and "Time_points as much as their interaction had >80% statistical power, while the interaction "Diet:Time_point" was close to 80% statistical power (Appendix Table `r TabNum + 27`).
+
+```{r table-54-monocytes, include = TRUE, eval = TRUE}
+# Effect size of Monocytes
+PwrCal <- PwrCal3w[[which(names(PwrCal3w) %like% FigNam & 
+                          names(PwrCal3w) %like% SubFigNam[1])]][["Statistical_Power_of_Data"]] %>%
+  bind_rows(., .id = "Predictors")
+
+PwrCal %>%
+  # Build a table
+  gt(rowname_col = "effect") %>%
+    tab_stubhead(label = "Effect") %>%
+    tab_header(
+      title = md("**Appendix Table 54**"),
+      subtitle = md("**Monocytes: Statistical power of data**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_row_group(
+      label = PwrCal[13, "Predictors"],
+      rows = c(13:19)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[10, "Predictors"],
+      rows = c(10:12)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[7, "Predictors"],
+      rows = c(7:9)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[4, "Predictors"],
+      rows = c(4:6)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[3, "Predictors"],
+      rows = c(3)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[2, "Predictors"],
+      rows = c(2)
+    ) %>%
+    tab_row_group(
+      label = PwrCal[1, "Predictors"],
+      rows = c(1)
+    ) %>%
+    cols_hide(columns = Predictors)
+```
+
+## Conclusion
+
+In conclusion, it can be said that the infection route (needle, sand fly, or uninfected) as much as the time point of data collection (24 h vs. 72 h) were the primary difference makers with respect to observed `r SubFigNam[2]`, `r SubFigNam[3]` and `r SubFigNam[1]` counts in pooled mouse ear single-cell suspensions when IL1B^+^ was considered. It is of note that the nutritional status of the individuals did not have a detectable impact on the observed IL1B^+^ cell counts in the site of infection.
+
+```{r update-table-number-figure-1e-f}
+TabNum <- TabNum + 27
+```

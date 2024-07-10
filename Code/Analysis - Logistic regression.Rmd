@@ -1,0 +1,267 @@
+---
+title: "Logistic regression"
+author: "Johannes S. P. Doehl"
+date: "2024-05-24"
+output: pdf_document
+---
+
+```{r setup-logistic-regression, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r functions-for-logistic-regression}
+# Anti-diagonal selection (reverse diag() function)
+antidiag <- function(x, Offset = 0L) {
+  
+  x[col(x) + row(x) - ncol(x) - 1L == Offset]
+  
+  }
+```
+
+```{r collate-data-for-logistic-regression-from-RawDat}
+# Extract dataframes containing count data
+DatLgR <- RawDat[names(RawDat) %like% "LR"]
+
+# Set reference to "WN"
+DatLgR <- lapply(DatLgR, function(ww) {
+  
+  ww <- ww %>%
+    mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    mutate(., Groups = paste(.$Diet, .$Route, sep = "_"), .after = "Route") %>%
+    mutate(., across(where(is.character), as.factor)) %>%
+    droplevels(.)
+  
+  # Set factor references for analysis
+  ww <- within(ww, Diet <- relevel(Diet, ref = "WN"))
+  
+})
+
+# Split dataframe containing multiple tissue data into separate dataframes for analysis
+DatLgRSpt <- mapply(function(qq, rr) {
+  
+  if (nlevels(qq$Tissue) > 1) {
+    
+    xxx <- split(qq, qq$Tissue) %>%
+      
+      lapply(., function(ww) {
+        
+        droplevels(ww)
+        })
+    
+    xxx %>%
+      purrr::set_names(paste(rr, names(xxx), sep = " - "))
+    
+  } else {
+    
+    list(qq)
+  }
+}, qq = DatLgR, rr = names(DatLgR), SIMPLIFY = FALSE) %>%
+  flatten(.)
+```
+
+```{r logistic-regression}
+# Analyzes data of experiments
+ResLgR <- mapply(function(zz, yy) {
+  
+  # Logistic regression models
+  Mod <- glm(as.formula(
+    paste0("Event ~ ",
+           paste(c("Diet", "Route")[c("Diet", "Route") %in% colnames(zz)],
+                   collapse = " + "))),
+    data = zz,
+    family = binomial())
+  
+    # Modify the data entry in the model, so the model can be updated
+    Mod[["call"]][["data"]] <- parse(text = paste0("DatLgRSpt[[\"", yy, "\"]]"))[[1]]
+  
+               
+  # Combine data for output
+  list("Model" = Mod,
+       
+    # Add 95% CI for estimates to the table
+    "Model_summary" = summary(Mod)$coef %>%
+      as.data.frame(.) %>%
+      mutate("lower CI" = confint(Mod)[,1],
+             "upper CI" = confint(Mod)[,2],
+             .after = "Estimate") %>%
+      mutate(., "partial.R2" = {
+               # calculate partial R2
+               reduced <- lapply(seq_len(ncol(Mod$model)-1), function(x) update(Mod, terms(Mod)[-x]))
+               reduced.sse <- sapply(reduced, function(x) deviance(x))
+               Mod.sse <- deviance(Mod)
+               partial.r2 <- c(0, (reduced.sse - Mod.sse)/reduced.sse)
+               }, .before = "z value") %>%
+      mutate(., "sig." = .[["Pr(>|z|)"]] %>%
+             symnum(.,
+                    cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                    symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+      mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+      mutate(., across("Pr(>|z|)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))),
+    
+    
+    # Anova to estimate predictor strength
+    "Anova_of_model" = list(
+      "Original_predictor_order" = anova(Mod),
+      "Inverted_predictor_order" = anova(update(Mod, as.formula(
+          paste0("Event ~ ",
+                 paste(c("Route", "Diet")[c("Route", "Diet") %in% colnames(zz)],
+                       collapse = " + ")))))
+      ),
+    
+    # Wald test to estimate strength of predictor
+    "Wald_test" = list(
+      "Diet" = aod::wald.test(b = coef(Mod), Sigma = vcov(Mod), Terms = 2), # For Diet, compared to WN
+      "Route" = aod::wald.test(b = coef(Mod), Sigma = vcov(Mod), Terms = 3) # For Route, compared to needle
+    ),
+    
+    
+    # Odds Ratios with effect size according to Chen 2010
+    "Odds_ratios" = exp(cbind(OR = coef(Mod), confint(Mod))) %>%
+      as.data.frame(.) %>%
+      mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+      mutate(., "Effect_size" = .[, "OR"] %>% 
+               effectsize::interpret_oddsratio(., rules = "chen2010")),
+    
+    
+    # Probability of dissemination
+    "Probability" = {
+      if (nlevels(zz[["Groups"]]) == 4) { # For figures with 4 groups
+        
+        cbind(
+          with(zz,
+               data.frame("Diet" = factor(c("WN","WN","MN", "MN")),
+                          "Route" = factor(c("Needle", "SF", "Needle", "SF")))),
+          
+          predict(Mod, 
+                                  newdata = with(zz,
+                                                 data.frame("Diet" = factor(c("WN","WN","MN", "MN")),
+                                                            "Route" = factor(c("Needle", "SF", "Needle", "SF")))),
+                                  type = "link",
+                                  se = TRUE) %>%
+            within(., {
+              upper_CI <- plogis(fit + (1.96 * se.fit))
+              lower_CI <- plogis(fit - (1.96 * se.fit))
+              Predicted_Probability <- plogis(fit)
+              })
+          ) %>%
+          mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+          dplyr::select(-residual.scale)
+        
+      } else { # For figures where WN_Needle was excluded in the data collection
+        
+        cbind(
+          with(zz,
+               data.frame("Diet" = factor(c("WN","MN", "MN")),
+                          "Route" = factor(c("SF", "Needle", "SF")))),
+          
+          predict(Mod, 
+                                  newdata = with(zz,
+                                                 data.frame("Diet" = factor(c("WN","MN", "MN")),
+                                                            "Route" = factor(c("SF", "Needle", "SF")))),
+                                  type = "link",
+                                  se = TRUE) %>%
+            within(., {
+              upper_CI <- plogis(fit + (1.96 * se.fit))
+              lower_CI <- plogis(fit - (1.96 * se.fit))
+              Predicted_Probability <- plogis(fit)
+              })
+          ) %>%
+          mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+          dplyr::select(-residual.scale)
+        }
+      },
+    
+    
+    # Check is the model with predictors is significantly different form the Null-Model
+    "Model fit" = cbind(
+      "Chi-Sq" = with(Mod, null.deviance - deviance),
+      
+      "Df" = with(Mod, df.null - df.residual),
+      
+      "p.value" = with(Mod, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+      
+      "log likelihood" = logLik(Mod)
+      ) %>%
+        as.data.frame(.) %>%
+        mutate(., across(where(is.numeric), ~ round(.x, 4)))
+  )
+}, zz = DatLgRSpt, yy = names(DatLgRSpt), SIMPLIFY = FALSE)
+```
+
+```{r post-hoc-power-calculation-for-logistic-regression}
+# Minimum samples size for 80% power and retrospective power calculation
+PwrCalLgR <- mapply(function(yy, zz) {
+  
+  # Do sample size and retrospect power calculation for logistic regression
+  PwrCal <- list(
+    "Sample_size" = list(
+      "Diet" = pwrss.z.logreg(beta0 = coef(glm(Event ~ 1, data = yy, family = binomial)),
+                              beta1 = coef(zz[["Model"]])["DietMN"],
+                              r2.other.x = zz[["Model_summary"]]["RouteSF", "partial.R2"],
+                              power = 0.8, 
+                              alpha = 0.05, 
+                              dist = "binomial",
+                              verbose = FALSE),
+  
+      "Route" = pwrss.z.logreg(beta0 = coef(glm(Event ~ 1, data = yy, family = binomial)),
+                               beta1 = coef(zz[["Model"]])["RouteSF"],
+                               r2.other.x = zz[["Model_summary"]]["DietMN", "partial.R2"],
+                               power = 0.8, 
+                               alpha = 0.05, 
+                               dist = "binomial",
+                               verbose = FALSE)
+      ),
+    "Power" = list(
+      "Diet" = pwrss.z.logreg(beta0 = coef(zz[["Model"]])["(Intercept)"],
+                              beta1 = coef(zz[["Model"]])["DietMN"],
+                              r2.other.x = zz[["Model_summary"]]["RouteSF", "partial.R2"],
+                              n = nrow(yy), 
+                              alpha = 0.05, 
+                              dist = "binomial",
+                              verbose = FALSE),
+  
+      "Route" = pwrss.z.logreg(beta0 = coef(zz[["Model"]])["(Intercept)"],
+                               beta1 = coef(zz[["Model"]])["RouteSF"],
+                               r2.other.x = zz[["Model_summary"]]["DietMN", "partial.R2"],
+                               n = nrow(yy), 
+                               alpha = 0.05, 
+                               dist = "binomial",
+                               verbose = FALSE)
+      )
+    ) 
+  
+  # Combine the data in one data frame per figure panel
+  PwrCal %>%
+    lapply(., function(rr) {
+        
+      lapply(rr, function(ss) {
+        
+        cbind(
+          "Beta0" = ss[["parms"]][["beta0"]],
+          "Beta1" = ss[["parms"]][["beta1"]],
+          "R-square" = ss[["parms"]][["r2.other.x"]],
+          "alpha" = ss[["parms"]][["alpha"]],
+          "Power" = ss[["power"]],
+          "TotalN" = ss[["n"]],
+          "NCP" = ss[["ncp"]],
+          "Alternative" = ss[["parms"]][["alternative"]]
+          ) %>%
+          as.data.frame(.)
+        
+      }) %>%
+        bind_rows(., .id = "Predictor")
+    }) %>%
+      bind_rows(.) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., "Calculation" = rep(names(PwrCal), each = { nrow(.) / length(PwrCal) }), .before = "Predictor") %>%
+      mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+      mutate(., across(where(is.numeric), ~ round(.x, 3))) %>%
+      mutate(., across("TotalN", ~ round(.x, 0))) %>%
+      mutate(., across("Power", ~ round(.x, 2)))
+  
+}, yy = DatLgRSpt, zz = ResLgR, SIMPLIFY = FALSE)
+```
+
