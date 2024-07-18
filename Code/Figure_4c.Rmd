@@ -1,0 +1,594 @@
+---
+title: "Figure 4c"
+author: "Johannes S. P. Doehl"
+date: "2024-07-10"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-4c, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-4c}
+# Figure name
+FigNam <- "Figure 4c"
+
+# Subset data for figure 4c
+SubDat <- Res2w %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(FigNam)
+
+# Total mice used
+TotN <- lapply(Dat2wSpt %>%
+                 .[names(.) %like% FigNam], function(zz) {
+  nrow(zz)
+}) %>%
+  purrr::set_names(FigNam)
+
+# Total N per group
+GrpN <- mapply(function(xx, yy) {
+  table(yy$Diet, yy$Route) %>%
+    as.data.frame(.) %>%
+    unite(., c(Var1, Var2), col = "Group", sep = "_") %>%
+    tibble::column_to_rownames("Group") %>%
+    set_colnames(xx)
+  
+}, xx = FigNam, yy = Dat2wSpt %>%
+                 .[names(.) %like% FigNam], SIMPLIFY = FALSE) %>%
+  bind_cols(.)
+```
+
+
+## Data analysis
+
+Here, we present statistical comparison of systemic heme-oxygenase-1 of a total of *N*=`r TotN` well-nourished (WN) or malnourished (MN) BALB/c mice infected by sand fly bite (SF) or not (Ctrl) (Appendix table `r TabNum + 1`).
+
+```{r table-137-sample-size-information, include = TRUE, eval = TRUE}
+# Sample size information by cell type
+rbind(TotN %>%
+        bind_cols(.) %>%
+        as.data.frame(.) %>%
+        set_rownames("Total N"),
+      GrpN
+      ) %>%
+  t(.) %>%
+  as.data.frame.matrix(.) %>%
+  cbind(.,
+        sapply(FigNam, function(zz) {
+          SubDat[[zz]][["Assumption_Test_Outcome"]]["Dat_Transformation", "Outcome"]
+          }) %>%
+          as.data.frame(.) %>%
+          rename("Transformation" = ".")
+        ) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Targets") %>%
+    tab_header(
+      title = md("**Appendix Table 137**"),
+      subtitle = md("**Summary information**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+We needed to analyze the data with a two-way approach to account for the two predictors, "Diet" and "Route", both of which were between-subject factors.
+
+For a two-way ANOVA, we had to assess the data for compliance with assumptions:
+
+-   Data normality
+-   Homogeneity of variance
+-   No significant outliers
+
+## Assumption analyses
+
+Please, note that all assumption test results shown were post data transformation, where applicable (Appendix table `r TabNum + 1`).
+
+### Data normality
+
+The assessment of the untransformed data distribution for each group was conducted by Shapiro-Wilks test and QQ-plot after splitting the data by both predictors. Note that all groups consisted of \<30 data points (range[8 to 23]) (Appendix table `r TabNum + 1`), which made groups too small to assess data distribution reliably by Shapiro-Wilks test. We executed the test anyway as an indicator of gross departure of data normality. Thus, we performed the analyses by Shapiro-Wilks test (Appendix table `r TabNum + 2`) and QQ-plots (Fig.S1a-1). We found a departure of normality for the malnourished, sand fly infected group, which was improved by data transformation but not completely remedied.
+
+```{r table-138-shapiro-wilks, include = TRUE, eval = TRUE}
+# Data normality assumption
+lapply(FigNam, function(qq) {
+  SubDat[[qq]][["Data_Normality_Assumption"]]
+  }) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 138**"),
+      subtitle = md("**Univariate Shapito-Wilks test results**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+```{r qq-plot-figure-4c, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 3, out.width = "95%", fig.cap = "Fig.4c-1: QQ-plots of Heme-oxyginase-1 data"}
+ggarrange(SubDat[[FigNam]][["QQ plot: by groups"]])
+```
+
+
+### Homogeneity of variance
+
+The assessment of homogeneity of variance was conducted by Levene's test for the dataset. The analysis output showed that assumption of homogeneity between groups was violated as the manlourished, sand fly infected group had much larger variance than other three groups (Appendix table `r TabNum + 3`).
+
+```{r table-139-homogeneity-of-variance, include = TRUE, eval = TRUE}
+# Homogeneity of variance test: Levene's test outcome
+lapply(FigNam, function(qq) {
+  SubDat[[qq]][["Homogeneity_of_Variance"]]
+  }) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(., .id = "Targets") %>%
+  mutate(., "sig." = .[["p"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Targets") %>%
+    tab_stubhead(label = "Targets") %>%
+    tab_header(
+      title = md("**Appendix Table 139**"),
+      subtitle = md("**Assessment of homogeneity of variance by target**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+
+### Outliers
+
+A total of one outlier was observed, but not an extreme one (Appendix table `r TabNum + 4`).
+
+```{r table-140-outlier-test, include = TRUE, eval = TRUE}
+# Data outliers
+lapply(FigNam, function(qq) {
+    SubDat[[qq]][["Outliers"]]
+  }) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 140**"),
+      subtitle = md("**List of possible outliers**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+
+### Two-way analysis
+
+Based on the assumption analysis, we applied an appropriate two-way test to the respective datasets (Appendix table `r TabNum + 5`).
+
+```{r table-141-applied-tests, include = TRUE, eval = TRUE}
+# Applied tests
+cbind(
+  lapply(SubDat, function(aa) {
+    aa[["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied", "Outcome"]
+  }) %>%
+    bind_cols(.) %>%
+    t(.) %>%
+    set_colnames("Two-way test"),
+  lapply(SubDat, function(aa) {
+    aa[["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied", "Outcome"]
+  }) %>%
+    bind_cols(.) %>%
+    t(.) %>%
+    set_colnames("One-way test"),
+  lapply(SubDat, function(aa) {
+    aa[["Assumption_Test_Outcome"]]["Pairwise_comparison_applied", "Outcome"]
+  }) %>%
+    bind_cols(.) %>%
+    t(.) %>%
+    set_colnames("Pairwise")
+  ) %>%
+  as.data.frame(.) %>%
+   # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 141**"),
+      subtitle = md("**Applied tests**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+The respective two-way analyses showed that statistical significance for "Diet" and its interaction with "Route", but not for "Route" by itself (Appendix table `r TabNum + 6`), suggesting that malnourishment significantly increased HO-1 expression.
+
+```{r table-142-two-way-anova, include = TRUE, eval = TRUE}
+# Two-way ANOVA
+lapply(FigNam, function(qq) {
+  
+  if (SubDat[[qq]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied", "Outcome"] %like% "Robust") {
+    
+    SubDat[[qq]][["2-way_ANOVA_Type"]] %>%
+      capture.output(.) %>%
+      trimws(.) %>%
+      strsplit(., " ") %>%
+      lapply(., function(yy) {
+        
+        yy[yy != ""]
+      }) %>%
+      .[c(5:7)] %>%
+      lapply(., function(zz) {
+        
+        zz %>%
+          as.data.frame(.) %>%
+          t(.) %>%
+          as.data.frame(.)
+      }) %>%
+      bind_rows(.) %>%
+      set_colnames(c("Effect", "value", "p.value")) %>%
+      tibble::remove_rownames(.) %>%
+      mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+      mutate(., DFn = c(1,1,1),
+                DFd = c(31,31,31),
+                .before = "value") %>%
+      mutate(., "p<.05" = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", " "))) %>%
+      mutate(., "ges" = c(NA,NA,NA)) %>%
+      rename("Statistic" = "value")
+    
+  } else if (SubDat[[qq]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied", "Outcome"] %like% "regression") {
+    
+    SubDat[[qq]][["2-way_ANOVA_Type"]] %>%
+      as.data.frame(.) %>%
+      .[1:3,] %>%
+      tibble::rownames_to_column(., var = "Effect") %>%
+      dplyr::select(-c("Sum Sq", "Mean Sq")) %>%
+      mutate(., DFd = c(31,31,31),
+                .after = "Df") %>%
+      mutate(., "p<.05" = .[["Pr(>F)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", " "))) %>%
+      mutate(., "ges" = c(NA,NA,NA)) %>%
+      rename("DFn" = "Df",
+             "Statistic" = "F value",
+             "p.value" = "Pr(>F)") %>%
+      mutate(., across(where(Hmisc::all.is.numeric), as.numeric))
+    
+  } else {
+    
+    SubDat[[qq]][["2-way_ANOVA_Type"]] %>%
+      as.matrix(.) %>%
+      as.data.frame(.) %>%
+      rename("Statistic" = "F",
+             "p.value" = "p") %>%
+      mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>% 
+      mutate(., across("p<.05", noquote))
+  }
+  }) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  tibble::remove_rownames(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "Predictor") %>%
+    tab_stubhead(label = "Predictor") %>%
+    tab_header(
+      title = md("**Appendix Table 142**"),
+      subtitle = md("**Two-way analysis**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+For the analysis of the simple main effect for each respective between-subject factor for each target, we performed one-way analyses with the data split by always by the predictor that was not used as within the function. The results showed statistical significance when both malnourished groups were compared (Appendix table `r TabNum + 7`).
+
+```{r table-143-one-way-anova, include = TRUE, eval = TRUE}
+# One-way ANOVA
+# Data table
+lapply(FigNam, function(qq) {
+  
+  if (SubDat[[qq]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied", "Outcome"] %like% "Robust") {
+    
+    lapply(SubDat[[qq]][["1-way_ANOVA_simple_simple_main_effect"]], function(rr) {
+      
+      rr %>%
+        as.data.frame(.) %>%
+        rename(any_of(c("Factor" = "Diet",
+                      "Factor" = "Route")))
+        
+    }) %>%
+      bind_rows(., .id = "Effect") %>%
+      mutate(., across("Effect", ~ gsub(".*: ", "", .x))) %>%
+      dplyr::select(-starts_with("effsize_ci")) %>%
+      .[, c(1,2,3,4,5,6,8,7)] %>%
+      rename(c("statistic" = "test"))
+    
+  } else if (SubDat[[qq]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied", "Outcome"] %like% "Standard") {
+    
+    lapply(SubDat[[qq]][["1-way_ANOVA_simple_simple_main_effect"]], function(rr) {
+      
+      rr %>%
+        as.data.frame(.) %>%
+        rename(any_of(c("Factor" = "Diet",
+                      "Factor" = "Route")))
+        
+    }) %>%
+      bind_rows(., .id = "Effect") %>%
+      mutate(., across("Effect", ~ gsub(".*: ", "", .x))) %>%
+      .[, c(1,2,5,3,4,6,7,8)] %>%
+      rename(c("statistic" = "F",
+               "df1" = "DFn",
+               "df2" = "DFd",
+               "p.value" = "p",
+               "effsize" = "ges",
+               "Sig." = "p<.05")) %>% 
+      mutate(., across("Sig.", noquote))
+  }
+  }) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  mutate(., across("Sig.", ~ ifelse(.x == "", "ns", .x))) %>%
+  mutate(., across("Sig.", noquote)) %>%
+  # Build a table
+  gt(rowname_col = "Factor") %>%
+    tab_stubhead(label = "Factor") %>%
+    tab_header(
+      title = md("**Appendix Table 143**"),
+      subtitle = md("**Simple main effect analysis**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+Since both predictors had only two levels each, the pairwise comparison reflected the observations of the one-way analyses above (Table `r TabNum + 8`).
+
+```{r table-144-pairwise-comparison, include = TRUE, eval = TRUE}
+# Pairwise comparison
+# This table is only for Diet as predictor and only rows with significant p-values
+
+lapply(FigNam, function(pp) {
+  
+  if (SubDat[[pp]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied", "Outcome"] %like% "Linear") {
+    
+    mapply(function(qq, rr) {
+      qq %>%
+        rename(any_of(c("Factor" = "Diet",
+                        "Factor" = "Route"))) %>%
+        { if (rr %like% "Route") {
+            mutate(., 
+                 "contrast" = paste(paste(.$Factor, "Ctrl"),
+                                    paste(.$Factor, "SF"),
+                                    sep = " - "),
+                 .before = "Factor")
+          } else {
+            mutate(., 
+                 "contrast" = paste(paste("WN", .$Factor),
+                                    paste("MN", .$Factor),
+                                    sep = " - "),
+                 .before = "Factor")
+          }
+        }
+    }, qq = SubDat[[pp]][["Pairwise_simple_simple_comparison"]],  
+       rr = names(SubDat[[pp]][["Pairwise_simple_simple_comparison"]]), 
+       SIMPLIFY = FALSE) %>%
+      bind_rows(.) %>%
+      mutate(., 
+             "df" = rep(31, times = 4),
+             .after = "contrast") %>%
+      rename("statistic" = "psihat") %>%
+      .[, c(1,2,4,7,8)] %>%
+      arrange(contrast)
+    
+  } else if (SubDat[[pp]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied", "Outcome"] %like% "regression") {
+    
+    SubDat[[pp]][["Pairwise_simple_simple_comparison"]][["Pairwise comparison"]] %>% 
+      as.data.frame(.) %>% 
+      mutate(., "Sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+      dplyr::filter(!contrast %in% "WN Ctrl - MN SF", # Remove the pairs that are of no interest
+                    !contrast %in% "MN Ctrl - WN SF") %>%
+      .[, c(1,4,2,6,7)] %>%
+      rename("statistic" = "estimate") %>%
+      arrange(contrast)
+    
+  } else {
+    
+    mapply(function(qq, rr) {
+      qq %>%
+        rename(any_of(c("Factor" = "Diet",
+                        "Factor" = "Route"))) %>%
+        { if (rr %like% "Route") {
+            mutate(., 
+                 "contrast" = paste(paste(.$Factor, .$group1),
+                                    paste(.$Factor, .$group2),
+                                    sep = " - "),
+                 .before = "Factor")
+          } else {
+            mutate(., 
+                 "contrast" = paste(paste(.$group1, .$Factor),
+                                    paste(.$group2, .$Factor),
+                                    sep = " - "),
+                 .before = "Factor")
+          }
+        }
+    }, qq = SubDat[[pp]][["Pairwise_simple_simple_comparison"]],  
+       rr = names(SubDat[[pp]][["Pairwise_simple_simple_comparison"]]), 
+       SIMPLIFY = FALSE) %>%
+      
+      bind_rows(.) %>%
+      dplyr::select(-c("Factor",
+                       "term",
+                       ".y.",
+                       "group1",
+                       "group2",
+                       "p")) %>%
+      rename("p.value" = "p.adj",
+             "Sig." = "p.adj.signif") %>%
+      as.data.frame(.) %>%
+      arrange(contrast) %>%
+      mutate(., across("Sig.", noquote))
+    
+    
+  }
+  }) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across(c("p.value"), ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "contrast") %>%
+    tab_header(
+      title = md("**Appendix Table 144**"),
+      subtitle = md("**Pairwise comparison**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) 
+```
+
+
+## Statistical power
+
+Considering the small group sizes (Appendix tables `r TabNum + 1`), we wanted to ensure that the study design was not significantly statistically underpowered. Thus, we performed a retrospective sample size and power analysis on the data by target.
+
+```{r subsetting-the-power-calculation-data-for-figure-4c}
+# Subset data for figure 4c
+SubDat <- PwrCal2w %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(FigNam)
+```
+
+
+### Effect size estimation based on partial eta^2^
+
+Effect sizes were calculated by predictor and the different potential interaction combinations of them. Appendix tables `r TabNum + 9` shows the respective effect sizes. Note that upper ends of the confidence intervals were automatically set to 1 for this type of calculation. Large effect sizes reflected statistically meaningful differences in the data analysis. The partial eta^2^ values from the effect size calculation were then used for the retrospective power calculations.
+
+```{r table-145-effect-size, include = TRUE, eval = TRUE}
+#Effect size
+lapply(SubDat, function(qq) {
+  qq[["Effect_Size"]] %>%
+    as.data.frame(.) %>%
+    dplyr::select(!CI) 
+}) %>%
+  bind_rows(., .id = "Target") %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 4), scientific = FALSE))) %>%
+  mutate(., "Effect Size" = ifelse(.[["Eta2_partial"]] < 0.01, "very small",
+                                           ifelse(.[["Eta2_partial"]] < 0.06, "small",
+                                                  ifelse(.[["Eta2_partial"]] < 0.14, "medium", "large")))) %>%
+  group_by(Target) %>%
+  # Build a table
+  gt(rowname_col = "Parameters") %>%
+    tab_stubhead(label = "Predictors") %>%
+    tab_header(
+      title = md("**Appendix Table 145**"),
+      subtitle = md("**Effect size**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    )
+```
+
+
+### Retrospective minimum total sample size estimation for 80% power
+
+The accepted rule of thumb is to have at least 80% (0.8 as ratio) statistical power in once data. For small mean differences within data of a high level of complexity, this is often hard to achieve, because of cost and ability to manage large sample sizes. In most instances, proposed sample sizes based on our data suggested that actual sample sizes were frequently too small for a chance of detecting statistical significant differences, particularly, for infection "Route" (Appendix tables `r TabNum + 10`).
+
+```{r table-146-sample-size, include = TRUE, eval = TRUE}
+# Retrospective sample size calculation
+lapply(SubDat, function(qq) {
+  qq[["Sample_Size_for_80%_Power"]] %>%
+    bind_rows(., .id = "Parameters")
+}) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 2), scientific = FALSE))) %>%
+  # Build a table
+  gt(rowname_col = "Parameters") %>%
+    tab_stubhead(label = "Parameters") %>%
+    tab_header(
+      title = md("**Appendix Table 146**"),
+      subtitle = md("**Minimum optimal sample size calculation**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "n.total")
+    )
+```
+
+
+### Retrospective calculation of statistical power in our data analysis
+
+The retrospective power calculation suggested that the study was underpowered, but not terribly (Appendix Table `r TabNum + 11`). Even so, excessively large proposed sample sizes and small retrospective statistical power can also be an indicator that there was in fact no meaningful biological difference to be found. Considering that statistical significant difference were still found, suggested that the above observations were real.
+
+```{r table-147-power-calculation, include = TRUE, eval = TRUE}
+# Retrospective power calculation
+lapply(SubDat, function(qq) {
+  qq[["Statistical_Power_of_Data"]] %>%
+    bind_rows(., .id = "Parameters")
+}) %>%
+  purrr::set_names(FigNam) %>%
+  bind_rows(.) %>%
+  mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
+  mutate(., across(where(is.numeric), ~ format(round(.x, 2), scientific = FALSE))) %>%
+  # Build a table
+  gt(rowname_col = "Parameters") %>%
+    tab_stubhead(label = "Parameters") %>%
+    tab_header(
+      title = md("**Appendix Table 147**"),
+      subtitle = md("**Statistical power of data**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      location = cells_body(
+        columns = "power")
+    )
+```
+
+
+```{r update-table-number-figure-4c}
+TabNum <- TabNum + 11
+```

@@ -69,7 +69,7 @@ LRTPct <- RegModAICPct %>%
   .[["Likelihood ratio test"]]
 ```
 
-Whereas figure 2e looked at the retention of Dextran in draining lymph nodes, here, we investigated the accumulation of intradermally injected 10,000 kDa-Dextran in the spleen 72 h post sand fly bite, which made it passed the lymph node barrier. The samples were also analyzed by Flow cytometry. We analyzed a total of *N*=`r TotN` BALB/c mice (`r paste(names(SampleN), SampleN, sep = "=", collapse = ", ")`). This were the same mice as in figure 2e. For the data analysis, we tested Poisson and negative binomial regression models of the normalized cell counts, or beta regression after conversion of percentiles to ratios. Based on the Akaike information criterion (AIC), we selected a `r RegModAICPct %>% .[names(.) %like% FigNam & names(.) %like% TisNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` model for the data analysis post data re-scaling. The model fit of the data was reasonable producing no statistically significant departure from 1 for its dispersion ratio (`r round(DispRatPct, 4)`), producing a pseudo-R^2^ of `r round(pR2Pct, 4)`. The model output showed that "Diet" was a statistically significant predictors (Appendix table `r TabNum + 1`) and its inclusion made the model distinct from the null model (Appendix table `r TabNum + 2`), showing that statistically significantly more Dextran accumulated in spleens from malnourished BALB/c mice.
+Whereas figure 2e looked at the retention of Dextran in draining lymph nodes, here, we investigated the accumulation of intradermally injected 10,000 kDa-Dextran in the spleen 72 h post sand fly bite, which required transition through the draining lymph node. The samples were also analyzed by Flow cytometry. We analyzed a total of *N*=`r TotN` BALB/c mice (`r paste(names(SampleN), SampleN, sep = "=", collapse = ", ")`). This were the same mice as in figure 2e. For the data analysis, we tested Poisson and negative binomial regression models of the normalized cell counts, or beta regression after conversion of percentiles to ratios. Based on the Akaike information criterion (AIC), we selected a `r RegModAICPct %>% .[names(.) %like% FigNam & names(.) %like% TisNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` model for the data analysis post data re-scaling. The model fit of the data was reasonable producing no statistically significant departure from 1 for its dispersion ratio (`r round(DispRatPct, 4)`), producing a pseudo-R^2^ of `r round(pR2Pct, 4)`. The model output showed that "Diet" was a statistically significant predictors (Appendix table `r TabNum + 1`) and its inclusion made the model distinct from the null model (Appendix table `r TabNum + 2`), showing that statistically significantly more Dextran accumulated in spleens from malnourished BALB/c mice.
 
 ```{r table-83-regression-analysis-of-counts, include = TRUE, eval = TRUE}
 # Model output
@@ -114,11 +114,13 @@ LRTPct %>%
                   symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
   mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
   mutate(., across("Pr(>Chisq)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  set_rownames(c("Null", "Diet")) %>%
   # Build a table
-  gt() %>%
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Model") %>%
     tab_header(
       title = md("**Appendix Table 84**"),
-      subtitle = md("**Beta regression model output**")
+      subtitle = md("**Predictor significance in the model**")
     ) %>%
     tab_style(
       style = cell_text(align = "center"),

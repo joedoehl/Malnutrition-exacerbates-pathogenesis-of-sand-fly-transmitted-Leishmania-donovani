@@ -55,7 +55,7 @@ TabNum <- 0
 
 ## Data analysis
 
-Figure 1 b and c present the outcome variable of total `r SubFigNam[2]` counts and separately, `r SubFigNam[3]` and `r SubFigNam[1]` counts from *N*=`r TotN` pools of single cell suspensions, respectively, prepared from BALB/c mouse ears infected with *Leishmania donovani* by needle or sand flies (SF) delivery at 24 h and 72 h post sand fly bites. Please, refer to the methods section of the publication for more details on sample preparation. Note that different mice were sampled at 24 h and 72 h post infection, which meant that this dataset satisfied the independence of data points and therefore, did not represent a repeatedly measured dataset. With the time point variable (Time_point), this dataset contained two more predictor variables: Mouse "Diet" (well-nourished [WN], malnourished [MN]) and infection "Route" (uninfected control, needle delivery [Needle], sand fly delivery [SF]). Based on this information, a three-way analysis was indicated.
+Figure 1 b and c present the cell counts of total `r SubFigNam[2]` and separately, of `r SubFigNam[3]` and `r SubFigNam[1]` from *N*=`r TotN` pools of single cell suspensions, respectively, prepared from BALB/c mouse ears collected 24 h and 72 h post infection with *Leishmania donovani* by "needle" inoculation or infective sand flies (SF) bites. Please, refer to the methods section of the publication for more details on sample preparation. Note that different mice were sampled at 24 h and 72 h post infection, which meant that this dataset satisfied the independence of data points and therefore, did not represent a repeatedly measured dataset. Thus, this dataset contained three between-subject factors, "Diet" (well-nourished [WN] or malnourished [MN]), "Route" (uninfected control [Ctrl], needle inoculation [Needle], infective sand fly bites [SF]) and "Time_point" (collection at 24 h or 72 h). Based on this information, a three-way analysis was indicated.
 
 Thus, we assessed the data for compliance with assumptions for a three-way ANOVA:
 
@@ -63,17 +63,17 @@ Thus, we assessed the data for compliance with assumptions for a three-way ANOVA
 -   Homogeneity of variance
 -   No significant outliers
 
-Initial assumption assessment indicated that data transformation was required to meet assumptions for a three-way ANOVA. Thus, we settled for a Box-Cox power transformation of all datasets presented in this figure. Thus, data distribution and variance appear different in the main figure in the publication from the once that were used in the analysis post transformation.
+Initial assumption assessment indicated that data transformation was required to meet assumptions for a three-way ANOVA. Thus, we settled for a Box-Cox power transformation of all datasets presented in this figure. Thus, data distribution and variance appear different in the main figure panels in the publication from the once that were used in the analysis post transformation.
 
-### Assumption analyses
+## Assumption analyses
 
-#### Data normality
+### Data normality
 
 The assessment of the transformed data distribution for each group was conducted by Shpiro-Wilks test and QQ-plot for counts of `r SubFigNam[2]`, `r SubFigNam[3]` and `r SubFigNam[1]` separately. Note that all groups of all datasets consisted of *N*=`r GrpN` pools of mouse ear single-cell suspensions, which made it difficult to assess data distribution reliably by Shapiro-Wilks test.
 
-##### `r SubFigNam[2]`
+### `r SubFigNam[2]`
 
-In spite of assessment limitations due to small group sizes, We concluded based on Shpiro-Wilks test (Table `r TabNum + 1`) and QQ-pots (Fig.1b-c-1) that all groups of the dataset were approximately normal distributed.
+In spite of assessment limitations due to small group sizes, we concluded based on the Shapiro-Wilks test (Appendix table `r TabNum + 1`) and QQ-plots (Fig.1b-c-1) that all groups of the dataset were likely to follow a normal distribution.
 
 ```{r table-1-myeloid-cells, include = TRUE, eval = TRUE}
 # Data normality assumption
@@ -87,7 +87,7 @@ SubDat[[SubFigNam[2]]][["Data_Normality_Assumption"]] %>%
     tab_stubhead(label = "Groups") %>%
     tab_header(
       title = md("**Appendix Table 1**"),
-      subtitle = md("**Myeloid cells: Univariate Shapito-Wilks test results**")
+      subtitle = md("**Myeloid cells: Univariate Shapiro-Wilks test results**")
     ) %>%
     tab_style(
       style = cell_text(align = "center"),
@@ -95,13 +95,13 @@ SubDat[[SubFigNam[2]]][["Data_Normality_Assumption"]] %>%
     )
 ```
 
-```{r qq-plot-figure-1b-c-myeloid-cells, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1b-c-1: QQ-plots of myeloid cell counts split into groups by predictor variables"}
+```{r qq-plot-figure-1b-c-myeloid-cells, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 4, out.width = "95%", fig.cap = "Fig.1b-c-1: QQ-plots of myeloid cell counts split into groups by predictor variables"}
 SubDat[[SubFigNam[2]]][["QQ plot: by groups"]]
 ```
 
-##### `r SubFigNam[3]`
+### `r SubFigNam[3]`
 
-In spite of assessment limitations due to small group sizes, We concluded based on Shpiro-Wilks test (Table `r TabNum + 2`) and QQ-pots (Fig.1b-c-2) that all groups of the dataset were approximately normal distributed.
+In spite of assessment limitations due to small group sizes, we concluded based on the Shapiro-Wilks test (Appendix table `r TabNum + 2`) and QQ-plots (Fig.1b-c-2) that all groups of the dataset were likely to follow a normal distribution.
 
 ```{r table-2-neutrophils, include = TRUE, eval = TRUE}
 # Data normality assumption
@@ -115,7 +115,7 @@ SubDat[[SubFigNam[3]]][["Data_Normality_Assumption"]] %>%
     tab_stubhead(label = "Groups") %>%
     tab_header(
       title = md("**Appendix Table 2**"),
-      subtitle = md("**Neutrophils: Univariate Shapito-Wilks test results**")
+      subtitle = md("**Neutrophils: Univariate Shapiro-Wilks test results**")
     ) %>%
     tab_style(
       style = cell_text(align = "center"),
@@ -123,13 +123,13 @@ SubDat[[SubFigNam[3]]][["Data_Normality_Assumption"]] %>%
     )
 ```
 
-```{r qq-plot-figure-1b-c-neutrophils, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1b-c-2: QQ-plots of neutrophil counts split into groups by predictor variables"}
+```{r qq-plot-figure-1b-c-neutrophils, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 4, out.width = "95%", fig.cap = "Fig.1b-c-2: QQ-plots of neutrophil counts split into groups by predictor variables"}
 SubDat[[SubFigNam[3]]][["QQ plot: by groups"]]
 ```
 
-##### `r SubFigNam[1]`
+### `r SubFigNam[1]`
 
-In spite of assessment limitations due to small group sizes, We concluded based on Shpiro-Wilks test (Table `r TabNum + 3`) and QQ-pots (Fig.1b-c-3) that all groups of the myeloid cell dataset were approximately normal distributed.
+In spite of assessment limitations due to small group sizes, we concluded based on the Shapiro-Wilks test (Appendix table `r TabNum + 3`) and QQ-plots (Fig.1b-c-3) that all groups of the dataset were likely to follow a normal distribution.
 
 ```{r table-3-monocytes, include = TRUE, eval = TRUE}
 # Data normality assumption
@@ -143,7 +143,7 @@ SubDat[[SubFigNam[1]]][["Data_Normality_Assumption"]] %>%
     tab_stubhead(label = "Groups") %>%
     tab_header(
       title = md("**Appendix Table 3**"),
-      subtitle = md("**Monocytes: Univariate Shapito-Wilks test results**")
+      subtitle = md("**Monocytes: Univariate Shapiro-Wilks test results**")
     ) %>%
     tab_style(
       style = cell_text(align = "center"),
@@ -151,17 +151,17 @@ SubDat[[SubFigNam[1]]][["Data_Normality_Assumption"]] %>%
     )
 ```
 
-```{r qq-plot-figure-1b-c-monocytes, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 5, out.width = "95%", fig.cap = "Fig.1b-c-3: QQ-plots of monocyte counts split into groups by predictor variables"}
+```{r qq-plot-figure-1b-c-monocytes, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 4, out.width = "95%", fig.cap = "Fig.1b-c-3: QQ-plots of monocyte counts split into groups by predictor variables"}
 SubDat[[SubFigNam[1]]][["QQ plot: by groups"]]
 ```
 
 #### Homogeneity of variance
 
-The assessment of homogeneity of variance was also conducted for myeloid cell, neutrophil and monocyte counts separately. We employed a Levene's test for the whole model for each dataset. The p-value for the test suggested that the assumption of homogeneity of variance `r if (SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[2]` (`r if (SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`), `r if (SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[3]` (`r if (SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`), and `r if (SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[1]` (`r if (SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`).
+The assessment of homogeneity of variance was also conducted for myeloid cell, neutrophil and monocyte counts separately. We employed the Levene's test on each dataset. The p-value for the test suggested that the assumption of homogeneity of variance `r if (SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[2]` (`r if (SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[2]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`), `r if (SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[3]` (`r if (SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[3]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`), and `r if (SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]] < 0.05) { "was rejected" } else { "held" }` for `r SubFigNam[1]` (`r if (SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]] < 0.0001) { "p<0.0001" } else { paste0("p=", format(round(SubDat[[SubFigNam[1]]][["Homogeneity_of_Variance"]][["p"]], 4), scientific = FALSE)) }`).
 
 #### Outliers
 
-It can be difficult to determine outliers in small datasets reliably as the analysis is dependent on the interquartile range of the data per group. We attempted it anyway and found `r nrow(SubDat[[SubFigNam[2]]][["Outliers"]])` outliers in the `r SubFigNam[2]` dataset (Table `r TabNum + 4`), `r nrow(SubDat[[SubFigNam[3]]][["Outliers"]])` outliers in the `r SubFigNam[3]` dataset (Table `r TabNum + 5`), and `r nrow(SubDat[[SubFigNam[1]]][["Outliers"]])` outliers in the `r SubFigNam[1]` dataset (Table `r TabNum + 6`).
+It can be difficult to determine outliers in small datasets reliably as the analysis is dependent on the interquartile range of the data per group. We attempted it anyway and found a potential `r nrow(SubDat[[SubFigNam[2]]][["Outliers"]])` outliers in the `r SubFigNam[2]` dataset (Appendix table `r TabNum + 4`), `r nrow(SubDat[[SubFigNam[3]]][["Outliers"]])` outliers in the `r SubFigNam[3]` dataset (Appendix table `r TabNum + 5`), and `r nrow(SubDat[[SubFigNam[1]]][["Outliers"]])` outliers in the `r SubFigNam[1]` dataset (Appendix table `r TabNum + 6`), of which some were classified as extreme. However, larger datasets may have found these not be outliers, but just peripheral.
 
 ```{r table-4-myeloid-cells, include = TRUE, eval = TRUE}
 # Data outliers
@@ -217,11 +217,13 @@ SubDat[[SubFigNam[1]]][["Outliers"]] %>%
     )
 ```
 
-### Three-way analysis
+## Three-way analysis
 
-#### `r SubFigNam[2]`
+The appropriate three-way analysis was performed for `r SubFigNam[2]`, `r SubFigNam[3]` and `r SubFigNam[1]` separately.
 
-Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[2]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[2]` count per pooled ear single-cell suspension (Table `r TabNum + 7`). The test output showed that only the "Route" predictor was a statistically significant factor, while the interaction between Time_point and Diet was statistically significant, too.
+### `r SubFigNam[2]`
+
+Based on the assumption tests, we decided to apply a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[2]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[2]` counts per pooled ear single-cell suspension (Appendix table `r TabNum + 7`). The test output showed that only the infection "Route" was a statistically significant predictor, while the interaction between Time_point and Diet was statistically significant, too.
 
 ```{r table-7-three-way-anova, include = TRUE, eval = TRUE}
 # Three-way ANOVA
@@ -266,7 +268,7 @@ SubDat[[SubFigNam[2]]][["3-way_ANOVA"]] %>%
     )
 ```
 
-We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. The results showed that, after adjustment of p-values for multiple tests, only the "Route" predictor produced statistically significant p-values, regardless of whether the data was split by "Diet" or "Time-point" (Table `r TabNum + 8`). This suggested that the only predictor of impact on cell counts was the route of infection.
+We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. The results showed that, after adjustment of p-values for multiple tests, only the "Route" predictor produced statistically significant p-values, regardless of whether the data was split by "Diet" or "Time-point" (Appendix table `r TabNum + 8`). This suggested that the only predictor of impact on `r SubFigNam[2]` counts was the route of infection.
 
 ```{r table-8-two-way-anova, include = TRUE, eval = TRUE}
 # Two-way ANOVA
@@ -315,7 +317,7 @@ SubDat[[SubFigNam[2]]][["2-way_ANOVA_post_hoc"]] %>%
     )
 ```
 
-For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed yet again that after the adjustment of p-values for multiple tests, only the "Route" predictor produce statistically significant p-values (Table `r TabNum + 9`). Here, the differences were observed in the well-nourished group (WN) at 24 h post infection and for the malnourished group at 72 h post infection.
+For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed yet again that after the adjustment of p-values for multiple tests, only the "Route" predictor produce statistically significant p-values (Appendix table `r TabNum + 9`). Here, the differences were observed in the well-nourished group (WN) at 24 h post infection and for the malnourished group at 72 h post infection.
 
 ```{r table-9-one-way-anova, include = TRUE, eval = TRUE}
 # One-way ANOVA
@@ -367,7 +369,7 @@ SubDat[[SubFigNam[2]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
     cols_hide(columns = c(effsize_ci_lower, effsize_ci_upper, Sig.))
 ```
 
-For the pairwise comparison, we applied a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. The output showed that at 24 h post infection, the sand fly infection route was statistically significant from the control and needle inoculum in the well-nourished (WN) group (Table `r TabNum + 10`). At 72 h, the sand fly infection route was statistically significant from the control in the malnourished group. Further, statistically significant difference were observed between well-nourished and malnourished mice inoculated by needle at 24 h post infection and infected by sand fly at 72 h post infection.
+For the pairwise comparison, we applied a `r SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. The output showed that at 24 h post infection, the sand fly infection route was statistically significantly different from the control and needle inoculum in the well-nourished (WN) group (Appendix table `r TabNum + 10`). At 72 h, the sand fly infection route was statistically significantly different from the control in the malnourished group. Further, statistically significant difference were observed between well-nourished and malnourished mice inoculated by needle at 24 h post infection and infected by sand fly at 72 h post infection.
 
 ```{r table-10-pairwise-comparison, include = TRUE, eval = TRUE}
 # Pairwise comparison
@@ -413,9 +415,9 @@ SubDat[[SubFigNam[2]]][["Pairwise_simple_simple_comparison"]] %>%
     )
 ```
 
-#### `r SubFigNam[3]`
+### `r SubFigNam[3]`
 
-Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[3]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[3]` count per pooled ear single-cell suspension (Table `r TabNum + 11`). The test output showed that only the "Route" predictor was a statistically significant factor, while the interaction between Time_point and Diet was statistically significant, too. Thus, `r SubFigNam[3]` followed the same pattern as the overarching `r SubFigNam[2]` category.
+Based on the assumption tests, we decided to apply a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[3]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[3]` count per pooled ear single-cell suspension (Appendix table `r TabNum + 11`). As for `r SubFigNam[2]`, the test output showed that only the infection "Route" was a statistically significant predictor, but none of the interaction terms were.
 
 ```{r table-11-three-way-anova, include = TRUE, eval = TRUE}
 # Three-way ANOVA
@@ -460,7 +462,7 @@ SubDat[[SubFigNam[3]]][["3-way_ANOVA"]] %>%
     )
 ```
 
-We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. After adjustment of p-values for multiple tests, We observed statistically significant differences between 24 h and 72 h post infection, when the data was split by infestation route; in well-nourished group for Route, Time_point and their interaction, as much as for infection route in the malnourished group, when the data was split by "Diet"; and for infection routes at 24 h post infection, when the data was split by Time_point (Table `r TabNum + 12`).
+We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. After adjustment of p-values for multiple tests, we observed statistically significant differences between 24 h and 72 h post infection, when the data was split by infestation route, in the well-nourished group for Route, Time_point and their interaction, as much as for infection route in the malnourished group, when the data was split by "Diet"; and for infection routes at 24 h post infection, when the data was split by Time_point (Appendix table `r TabNum + 12`).
 
 ```{r table-12-two-way-anova, include = TRUE, eval = TRUE}
 # Two-way ANOVA
@@ -509,7 +511,7 @@ SubDat[[SubFigNam[3]]][["2-way_ANOVA_post_hoc"]] %>%
     )
 ```
 
-For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed statistically significant p-values for the sand fly inoculation in the well-nourished group for the Time_point predictor and at 24 h post infection in the well-nourished group for the infection route (Table `r TabNum + 13`).
+For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed statistically significant p-values for the sand fly inoculation in the well-nourished group for the Time_point predictor and at 24 h post infection in the well-nourished group for the infection route (Appendix table `r TabNum + 13`).
 
 ```{r table-13-one-way-anova, include = TRUE, eval = TRUE}
 # One-way ANOVA
@@ -561,7 +563,7 @@ SubDat[[SubFigNam[3]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
     cols_hide(columns = c(effsize_ci_lower, effsize_ci_upper, Sig.))
 ```
 
-For the pairwise comparison, we applied a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. The output showed that at 24 h post infection, there were statistically significant differences at 24 h post infection between the well-nourished and malnourished groups for the needle inoculum and at 72 h post infection for the sand fly inoculation (Table `r TabNum + 14`). Further, we observed differences in the well-nourished group at 24 h post infection between the sand fly inoculum and both, the control and needle inoculum. For the malnourished group we observed statistically significant p-values at 72 h post infection between the sand fly inolculum and the control group.
+For the pairwise comparison, we applied a `r SubDat[[SubFigNam[3]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. The output showed that there were statistically significant differences between time point for well-nourished, sand fly inoculated mice, at 24 h post infection between the well-nourished and malnourished groups for the needle inoculum and at 72 h post infection for the sand fly inoculation (Appendix table `r TabNum + 14`). Further, we observed differences in the well-nourished group at 24 h post infection between the sand fly inoculum and both, the control and needle inoculum. For the malnourished group we observed statistically significant p-values at 72 h post infection between the sand fly inolculum and the control group.
 
 ```{r table-14-pairwise-comparison, include = TRUE, eval = TRUE}
 # Pairwise comparison
@@ -607,9 +609,9 @@ SubDat[[SubFigNam[3]]][["Pairwise_simple_simple_comparison"]] %>%
     )
 ```
 
-#### `r SubFigNam[1]`
+### `r SubFigNam[1]`
 
-Based on the assumption analysis, we decided to apply a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[1]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[1]` count per pooled ear single-cell suspension (Table `r TabNum + 15`). The test output showed that only the "Route" predictor was a statistically significant factor. No statistically significant interaction between any predictors was observed.
+Based on the assumption tests, we decided to apply a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applied",]` to the `r SubFigNam[1]` dataset to determine the effects of "Diet", infection "Route" and time post infection ("Time_point") on the `r SubFigNam[1]` counts per pooled ear single-cell suspension (Appendix table `r TabNum + 15`). The test output showed that only the "Route" predictor was a statistically significant factor. No statistically significant interaction between any predictors was observed.
 
 ```{r table-15-three-way-anova, include = TRUE, eval = TRUE}
 # Three-way ANOVA
@@ -654,7 +656,7 @@ SubDat[[SubFigNam[1]]][["3-way_ANOVA"]] %>%
     )
 ```
 
-We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. The results showed that, after adjustment of p-values for multiple tests, only the "Route" predictor produced statistically significant p-values, regardless of whether the data was split by "Diet" or "Time-point" (Table `r TabNum + 16`). This suggested that the only predictor of impact on cell counts was the route of infection. No statistically significant interactions were observed at this level.
+We looked for main effects by splitting the data by each predictor separately and analyzed the respective remaining two predictor by a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["2-way_ANOVA_Test_applied",]`. The results showed that, after adjustment of p-values for multiple tests, only the "Route" predictor produced statistically significant p-values, regardless of whether the data was split by "Diet" or "Time-point" (Appendix table `r TabNum + 16`). This suggested that the only predictor of impact on cell counts was the route of infection. No statistically significant interactions were observed at this level.
 
 ```{r table-16-two-way-anova, include = TRUE, eval = TRUE}
 # Two-way ANOVA
@@ -703,7 +705,7 @@ SubDat[[SubFigNam[1]]][["2-way_ANOVA_post_hoc"]] %>%
     )
 ```
 
-For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed that after the adjustment of p-values for multiple tests, only the "Route" predictor produce statistically significant p-values in the malnourished group at 72 h post infection (Table `r TabNum + 17`).
+For the analysis of the simple simple main effect for each respective predictor, we performed `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["1-way_ANOVA_Test_applied",]` with individual predictors of the data split by the other two predictors. The output showed that after the adjustment of p-values for multiple tests, only the "Route" predictor produce statistically significant p-values in the malnourished group at 72 h post infection (Appendix table `r TabNum + 17`).
 
 ```{r table-17-one-way-anova, include = TRUE, eval = TRUE}
 # One-way ANOVA
@@ -755,7 +757,7 @@ SubDat[[SubFigNam[1]]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
     cols_hide(columns = c(effsize_ci_lower, effsize_ci_upper, Sig.))
 ```
 
-For the pairwise comparison, we applied a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. The output showed that at 24 h post infection, the sand fly infection route was statistically significant from the control and needle inoculum in the well-nourished (WN) group (Table `r TabNum + 18`). At 72 h, the sand fly infection route was statistically significant from the control in the malnourished group. Further, statistically significant difference were observed between well-nourished and malnourished mice inoculated by needle at 24 h post infection and infected by sand fly at 72 h post infection for the needle and sand fly inoculum, respectively.
+For the pairwise comparison, we applied a `r SubDat[[SubFigNam[1]]][["Assumption_Test_Outcome"]]["Pairwise_comparison_applied",]`. The output showed that at 24 h post infection, the sand fly infection route was statistically significant from the control and needle inoculum in the well-nourished (WN) group (Appendix table `r TabNum + 18`). At 72 h, the sand fly infection route was statistically significant from the control in the malnourished group. Further, statistically significant difference were observed between well-nourished and malnourished mice inoculated by needle at 24 h post infection and infected by sand fly at 72 h post infection for the needle and sand fly inoculum, respectively.
 
 ```{r table-18-pairwise-comparison, include = TRUE, eval = TRUE}
 # Pairwise comparison
@@ -801,13 +803,13 @@ SubDat[[SubFigNam[1]]][["Pairwise_simple_simple_comparison"]] %>%
     )
 ```
 
-### Statistical power
+## Statistical power
 
-Considering the small group *N*=`r GrpN` and the low occurrence of statistical significant outcomes, it stood to reason that the study design was statistically underpowered by necessity to keep animal number and costs manageable. Thus, we performed a retrospective power analysis on the data by cell-type group to explore this.
+Considering the small group *N*=`r GrpN` and the low occurrence of statistical significant outcomes, it stood to reason that the study design was statistically underpowered by necessity to keep animal numbers and costs manageable. Thus, we performed a retrospective power analysis on the data by cell-type group to explore this.
 
-#### Effect size estimation based on partial eta^2^
+### Effect size estimation based on partial eta^2^
 
-Effect sizes were calculated by predictor and the different potential interaction combinations of them. Appendix tables `r TabNum + 19` to `r TabNum + 21` show the respective effect sizes. Note that upper ends of the confidence intervals were automatically set to 1 for this type of calculation. Large effect sizes reflected statistically meaningful differences in the data analysis. The partial eta^2^ values from the effect size calculation were then used to the retrospective power calculations.
+Effect sizes were calculated by predictor and the different potential interaction combinations of them. Appendix tables `r TabNum + 19` to `r TabNum + 21` show the respective effect sizes. Note that upper ends of the confidence intervals were automatically set to 1 for this type of calculation. Large effect sizes reflected statistically meaningful differences in the data analysis. The partial eta^2^ values from the effect size calculation were then used for the retrospective power calculations.
 
 ```{r table-19-myeloid-cells, include = TRUE, eval = TRUE}
 # Effect size of Myeloid cells
@@ -863,9 +865,9 @@ PwrCal3w[[which(names(PwrCal3w) %like% FigNam & names(PwrCal3w) %like% SubFigNam
     )
 ```
 
-#### Retrospective minimum total sample size estimation for 80% power
+### Retrospective minimum total sample size estimation for 80% power
 
-The accepted rule of thumb is to have at least 80% (0.8 as ratio) statistical power in once data. For small mean differences within data of a high level of complexity, this is often hard to achieve, because of cost and ability to manage large sample sizes. For `r SubFigNam[2]`, only the predictor(s) "Route" and in interaction(s) "Diet:Time_point" resulted in optimal sample sizes that were within the total sample size of *N*=`r TotN` (Appendix table `r TabNum + 22`). The large proposed sample sizes for "Diet" and "Time_point" on their own suggested little statistically significant difference between groups by individual predictor. Thus, the most meaningful predictor for `r SubFigNam[2]` counts was the route of infection; by needle, sand fly, or no-infection (control).
+The accepted rule of thumb is to have at least 80% (0.8 as ratio) statistical power. For small mean differences within data with a high level of complexity, this is often hard to achieve, because of cost and ability to manage large sample sizes. For `r SubFigNam[2]`, only the predictor(s) "Route" and in interaction(s) "Diet:Time_point" resulted in optimal sample sizes that were within the total sample size of *N*=`r TotN` (Appendix table `r TabNum + 22`). The large proposed sample sizes for "Diet" and "Time_point" on their own suggested little statistically significant difference between groups by individual predictor. Thus, the most meaningful predictor for `r SubFigNam[2]` counts was the route of infection; by needle, sand fly, or no-infection (control).
 
 ```{r table-22-myeloid-cells, include = TRUE, eval = TRUE}
 # Effect size of Myeloid cells
@@ -967,7 +969,7 @@ PwrCal %>%
     cols_hide(columns = Predictors)
 ```
 
-For `r SubFigNam[1]` counts, "Diet" became a more meaningful predictor, although it would still have required a 6.3 times larger total sample size tan was available for the study (Appendix Table `r TabNum + 24`). "Time_point" was about as meaningful as it had been for the `r SubFigNam[2]`. Thus, only "Route" was a meaningful predictor that had on its own proposed sample sizes within the total sample size of *N*=`r TotN`.
+For `r SubFigNam[1]` counts, "Diet" became a more meaningful predictor, although it would still have required a 6.3 times larger total sample size than was available for the study (Appendix Table `r TabNum + 24`). "Time_point" was about as meaningful as it had been for the `r SubFigNam[2]`. Thus, only "Route" was a meaningful predictor that was on its own within proposed sample sizes ranges.
 
 ```{r table-24-monocytes, include = TRUE, eval = TRUE}
 # Effect size of Monocytes
@@ -1018,9 +1020,9 @@ PwrCal %>%
     cols_hide(columns = Predictors)
 ```
 
-#### Retrospective calculation of statistical power in our data analysis
+### Retrospective calculation of statistical power in our data analysis
 
-The observations from the retrospective minimum sample size calculation was reflected in the power calculation for our data. For `r SubFigNam[2]` counts, only "Route" and the interaction of "Diet:Time_point" had sufficient statistical power to have a change to find statistically meaning differences in the data (Appendix Table `r TabNum + 25`).
+The observations from the retrospective minimum sample size calculation were reflected in the power calculation for our data. For `r SubFigNam[2]` counts, only "Route" and the interaction of "Diet:Time_point" had sufficient statistical power to have a change to find statistically meaning differences in the data (Appendix Table `r TabNum + 25`).
 
 ```{r table-25-myeloid-cells, include = TRUE, eval = TRUE}
 # Effect size of Myeloid cells

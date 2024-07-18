@@ -801,7 +801,7 @@ Res2wM <- lapply(Dat2wMSpt, function(bb) {
                                 indVar = "Diet", 
                                 outerLev = "Time_point")
         
-          ResAov1w <- "Robust one-way mixed ANOVA"
+          ResAov1w <- "Robust one-way ANOVA"
           print(ResAov1w)
     
           # Simple simple pairwise comparison

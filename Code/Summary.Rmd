@@ -1,7 +1,7 @@
 ---
 title: "Summary"
 author: "Johannes S. P. Doehl"
-date: "2024-06-07"
+date: "2024-07-14"
 output: pdf_document
 ---
 
@@ -14,5 +14,4 @@ options(java.parameters = "-Xmx200000m")
 Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
 ```
 
-# Summary
-
+This appendix contains the detailed statistical analyses of all the data presented in the main and supplementary figures of the publication titled: "Malnutrition exacerbates pathogenesis of sand fly-transmitted *Leishmania donovani*". This report was an effort for transparency regarding the applied statistical analyses, in which we also considered retrospective power and sample size calculation to obtain a sense of statistical power in our data to better understand how well our statistical analyses reflected observed biological differences. Insufficient statistical power can result in type II errors, the erroneous acceptance of the null hypothesis that there is no meaning full difference between groups. Even though, we frequently observed lack of statistical power in our data, larger sample sizes were prohibitive due to cost and ethical consideration. That did not detract from the quality of findings presented in the manuscript. On the contrary, observed biological differences were often supported by statistical evaluation and supported the two main observations that infection by sand fly and the nutritional state of the individual had major impacts on the development of leishmaniasis and the infecting parasite, *Leishmania donovani*.

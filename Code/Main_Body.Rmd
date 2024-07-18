@@ -15,12 +15,17 @@ options(java.parameters = "-Xmx200000m")
 Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
 ```
 
+## General comments
+
+The report is arranged in the order of the figures and their panels as they appear in the main manuscript, to make it easier to accompany. Most data outputs are summarized in tables for easy accessibility. We clearly state the selection process of what we identified as most appropriate comparative analysis for the data for each figure panel. In some cases, data from multiple figure panels were analyzed together as it was one dataset but was split for comprehensive presentation of the data. Also, presented data in the manuscripts figures usually present untransformed datasets, while for the statistical analyses, data transformation was applied as indicated in places. All statistical analyses were performed naive to any expected outcome for unbiased, objective application and interpretation.
+
+
 ## Software and packages
 
 ```{r package-citations, include = TRUE, eval = TRUE}
 PackUsedPara <- grateful::cite_packages(output = "paragraph", out.dir = ".")
 ```
 
-All the statistics presented in the manuscript "`r StudTtl`" and in this appendix were produced in RStudio version `r RStudio.Version()$version` [@team2023]. `r PackUsedPara`[^1] For the creation of this appendix, the author made use of Rmarkdown [@allaire2024]. The original codes for this appendix are available as Rmarkdown files through the author's [github portal](https://github.com/joedoehl/Malnutrition-exacerbates-pathogenesis-of-sand-fly-transmitted-Leishmania-donovani.git).
+All the statistics presented in the manuscript "`r StudTtl`" and in this statistical report were produced in RStudio version `r RStudio.Version()$version` [@team2023]. `r PackUsedPara`[^1] For the creation of this statistical report, the author made use of Rmarkdown [@allaire2024]. The original codes for this statistical report are available as Rmarkdown files through the author's [github portal](https://github.com/joedoehl/Malnutrition-exacerbates-pathogenesis-of-sand-fly-transmitted-Leishmania-donovani.git).
 
 [^1]: R package citations were managed using the 'grateful' package [@grateful], while inter-package function name conflicts were managed with the 'conflicted' package [@conflicted]

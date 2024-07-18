@@ -615,6 +615,12 @@ gc()
 # Retrospective sample size calculation for 80% power for three-way interaction
 PwrCal2w <- mapply(function(qq, zz) {
   
+  ExpDat <- qq %>%
+    rename(any_of(c(Counts = "Absorbance", Counts = "Weight_g"))) %>%
+    mutate(., across(where(is.integer), as.numeric)) %>%
+    droplevels(.) %>%
+    mutate(across(where(is.character), as.factor))
+  
   # Get the names of the predictor variables used in the three-way ANOVA
   if (any(colnames(zz[["2-way_ANOVA_Type"]]) == "Effect")) { # For standard ANOVA
     
@@ -674,14 +680,14 @@ PwrCal2w <- mapply(function(qq, zz) {
   # Get the number of factor levels for each predictors
   FacLvl <- sapply(PrdNam, function(rr){
     
-    nlevels(qq[[rr]])
+    nlevels(ExpDat[[rr]])
   }) 
   
   # Calculate the total N of animals used in the study
-  totN <- eval(parse(text = paste0("sum(table(", paste(paste0("qq$", names(FacLvl)), collapse = ","), "))")))
+  totN <- eval(parse(text = paste0("sum(table(", paste(paste0("ExpDat$", names(FacLvl)), collapse = ","), "))")))
   
   # DATA PREPARATION
-  ExpDat <- qq %>%
+  ExpDat <- ExpDat %>%
     dplyr::select(any_of(c("Mouse", "Diet", "Route", "Cell_type", "Time_point", "Counts", "Weight_g"))) %>%
     rename(any_of(c(Counts = "Weight_g"))) %>%
     mutate(., across(where(is.integer), as.numeric)) %>%

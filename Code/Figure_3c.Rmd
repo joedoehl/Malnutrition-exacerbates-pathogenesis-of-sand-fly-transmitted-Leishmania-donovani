@@ -39,9 +39,9 @@ GrpN <- table(DatSur %>%
 
 Here, we analyzed the occurrence of ocular pathology following *Leishmania donovani* infection in well-nourished (WN) and malnourished (MN) BALB/c mice. A total of *N*=`r TotN` BALB/c mice (`r GrpN`) were examined on a weekly bases post infection by either "needle" or sand fly (SF) route and occurrence of pathology was recorded as time-to-event data. 
 
-#### Survival analysis
+## Survival analysis
 
-The data was analyzed by the Mantel-Haenszel's log-rank test by use of the survdiff() function from the survival package in R. The test output is shown in table `r TabNum + 1`, which was statistically significant (F(`r length(SubDat[["Survival"]][["obs"]]) - 1`)=`r round(SubDat[["Survival"]][["chisq"]], 2)`, `r if (SubDat[["Survival"]][["pvalue"]] < 0.0001) { "<0.0001" } else { format(round(SubDat[["Survival"]][["pvalue"]], 4), scientific = FALSE) }`).
+The data was analyzed by the Mantel-Haenszel's log-rank test by use of the survdiff() function from the survival package in R. The test output is shown in appendix table `r TabNum + 1`, which was statistically significant (F(`r length(SubDat[["Survival"]][["obs"]]) - 1`)=`r round(SubDat[["Survival"]][["chisq"]], 2)`, `r if (SubDat[["Survival"]][["pvalue"]] < 0.0001) { "<0.0001" } else { format(round(SubDat[["Survival"]][["pvalue"]], 4), scientific = FALSE) }`).
 
 ```{r table-99-mantel-haenszel-s-log-rank-test, include = TRUE, eval = TRUE}
 # Mantel-Haenszel log-rank test
@@ -84,7 +84,7 @@ cbind("N" = SubDat[["Survival"]][["n"]],
     )
 ```
 
-The pairwise Mantel-Haenszel' log-rank test, which was adjusted by the Benjamin-Hochberg correction, showed that the malnourished, sand fly inoculated group was statistically significant from all other groups, while there was no statistically significant difference between the remaining three groups (Table `r TabNum + 2`). 
+The pairwise Mantel-Haenszel' log-rank test, which was adjusted by the Benjamin-Hochberg correction, showed that the malnourished, sand fly inoculated group was statistically significant from all other groups, while there was no statistically significant difference between the remaining three groups (Appendix table `r TabNum + 2`). 
 
 ```{r table-100-pairwise-mantel-haenszel-s-log-rank-test, include = TRUE, eval = TRUE}
 # Pairwise log-rank test
@@ -119,7 +119,7 @@ SubDat[["Pairwise"]][["p.value"]] %>%
     )
 ```
 
-In fact, only malnourished animals developed ocular pathology post infection and the grand majority of these were inoculated by sand fly (Table `r TabNum + 3`), suggesting that sand flies significantly increase the occurrence of ocular pathology in malnourished hosts.
+In fact, only malnourished animals developed ocular pathology post infection and the grand majority of these were inoculated by sand fly (Appendix table `r TabNum + 3`), suggesting that sand fly bites significantly increased the occurrence of ocular pathology in malnourished hosts.
 
 ```{r table-101-percent-ocular-pathology-rate, include = TRUE, eval = TRUE}
 cbind(
@@ -184,7 +184,7 @@ cbind(
     )
 ```
 
-#### Cox proportional hazards regression model
+## Cox proportional hazards regression model
 
 ```{r cox-proportional-hazards-regression-model-data}
 # Subset data of Cox proportional hazards regression model that applies to this figure
@@ -193,7 +193,7 @@ SubDat <- ResCox %>%
   .[[1]]
 ```
 
-We also explored the data by Cox proportional hazards regression. Due to the lack of events in the well-nourished group, we had to resort to Firth's penalized maximum likelihood bias reduction method for Cox regression. The output showed that both predictors, "Diet" and "Route", were statistically significant (Table `r TabNum + 4`).
+We also explored the data by Cox proportional hazards regression. Due to the lack of events in the well-nourished group, we had to resort to Firth's penalized maximum likelihood bias reduction method for Cox regression. The output showed that both predictors, "Diet" and "Route", were statistically significant (Appendix table `r TabNum + 4`).
 
 ```{r table-102-Cox-PH-model-output, include = TRUE, eval = TRUE}
 # Firth's penalized maximum likelihood bias reduction method for Cox regression 
@@ -249,7 +249,7 @@ summary(ResCox[["Figure 3c KM"]][["Firth's Cox regression (2 var)"]]) %>%
     )
 ```
 
-The odds ratios suggested that "Diet" was a much more potent predictor for ocular pathology, than "Route", although both were statistically significant. Malnourished mice were about `r round(ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]]["DietMN", "AHR"],1)`-times more likely to develop ocular pathology than well-nourished mice compared to sand fly inoculated mice being `r round(ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]]["RouteSF", "AHR"],1)`-times more likely to developed ocular pathology compared to the once inoculated by needle (Table `r TabNum + 5`).
+The odds ratios suggested that "Diet" was a much more potent predictor for ocular pathology, than "Route", although both were statistically significant. Malnourished mice were about `r round(ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]]["DietMN", "AHR"],1)`-times more likely to develop ocular pathology than well-nourished mice compared to sand fly inoculated mice being `r round(ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]]["RouteSF", "AHR"],1)`-times more likely to developed ocular pathology compared to the once inoculated by needle (Appendix table `r TabNum + 5`).
 
 ```{r table-103-odds-ratios, include = TRUE, eval = TRUE}
 # Odds ratios
@@ -273,7 +273,7 @@ ResCox[["Figure 3c KM"]][["Hazard Ratio (2 var)"]] %>%
     )
 ```
 
-The pairwise comparison clearly confirmed the observation of the log-rank test that the malnourished, sand fly inoculated group was statistically significantly different from the other three groups (Table `r TabNum + 6` and `r TabNum + 7`). Here, the analysis also separated well-nourished needle inoculated mice from the other three groups, which may be due to the small samples.
+The pairwise comparison clearly confirmed the observation of the log-rank test that the malnourished, sand fly inoculated group was statistically significantly different from the other three groups (Appendix table `r TabNum + 6` and `r TabNum + 7`). Here, the analysis also separated well-nourished needle inoculated mice from the other three groups, which may be due to the small samples.
 
 ```{r table-104-pairwise-comaprison, include = TRUE, eval = TRUE}
 # Pariwise comparison by estimated marginal means

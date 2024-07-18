@@ -57,7 +57,7 @@ SubPwr <- PwrCalC2 %>%
 
 ## Data analysis
 
-We analysed the frequency of *Leishmania donovani* dissemination to several different tissues (brain, ears, eyes, liver, paw and spleen) in a total in a varying total *N* of well-nourished (WN) and malnourished (MN) BALB/c mice infected intradermally either by "needle" injection or sand fly bite (SF) by contingency table analysis and logistic regression (Appendix table `r TabNum + 1`). These are the same animals as presented in figure 3d. These analyses permitted looking at our data from another angle to fully comprehend the impact of infection route and state of nourishment. 
+We analysed the frequency of *Leishmania donovani* dissemination to several different tissue sites (brain, ears, eyes, liver, paw and spleen) in a varying total *N* of well-nourished (WN) and malnourished (MN) BALB/c mice infected intradermally either by "needle" injection or sand fly bite (SF) (Appendix table `r TabNum + 1`). We used contingency table analysis and logistic regression here. These are the same animals as presented in figure 3d. These analyses permitted looking at our data from another angle to fully comprehend the impact of infection route and state of nourishment on parasite dissemination.
 
 ```{r table-110-sample-size, include = TRUE, eval = TRUE}
 # sample size table
@@ -82,7 +82,7 @@ Due to the small sample sizes in most datasets, there were several expected coun
 
 ```{r table-111-contingency-analysis, include = TRUE, eval = TRUE}
 # Main contingency table analysis by tissue
-mapply(function(zz, yy) { # This gest the essential data from either test
+mapply(function(zz, yy) { # This gets the essential data from either test
   
   if (yy == "Fisher's Exact test") {
     
@@ -125,7 +125,7 @@ mapply(function(zz, yy) { # This gest the essential data from either test
     ) 
 ```
 
-Interestingly, the pairwise comparison did not show any statistical significant difference, even before adjusting p-values for multiple comparisons (Appendix table `r TabNum + 3`), suggesting that there is no difference between groups within any tissue in terms of dissemination success. 
+Interestingly, the pairwise comparison did not show any statistical significant difference, even before adjusting p-values for multiple comparisons (Appendix table `r TabNum + 3`), suggesting that there is no statistically significant difference between groups within any tissue in terms of dissemination success. 
 
 ```{r table-112-pairwise-comparison, include = TRUE, eval = TRUE}
 # Table of pairwise comparisons split by tissue
@@ -165,7 +165,7 @@ lapply(SubDat, function(zz) {
     ) 
 ```
 
-Conversely, looking at the odds ratios, then malnourished, sand fly inoculated mice were significantly more likely to experience parasite dissemination to the spleen than malnourished, needle inoculated mice (Appendix table `r TabNum + 4`).
+Conversely, when looking at the odds ratios, malnourished, sand fly inoculated mice were significantly more likely to experience parasite dissemination to the spleen than malnourished, needle inoculated mice, which served as the reference group in this analysis (Appendix table `r TabNum + 4`).
 
 ```{r table-113-odds-ratios, include = TRUE, eval = TRUE}
 lapply(SubDat, function(qq) {
@@ -201,7 +201,7 @@ lapply(SubDat, function(qq) {
     )
 ```
 
-However, applying a retrospective statistical power calculation showed that the sample size for most tissue was to small to detect a meaningful difference here and thus, our statistical power was well below the standard 80% for all tissues (Appendix table `r TabNum + 5`), but larger sample sizes were prohibitive due to cost and loss of life. 
+Applying a retrospective statistical power calculation showed that the sample size for most tissues was too small to detect a statistical difference difference and thus, our statistical power was well below the standard 80% for all tissues (Appendix table `r TabNum + 5`). This observation suggested that the lack of observing statistical significance may be due to type II errors. However, larger sample sizes were prohibitive due to cost and loss of life. 
 
 ```{r table-114-power-calculation, include = TRUE, eval = TRUE}
 # Subset data that applies to this figure
@@ -246,7 +246,7 @@ lapply(SubPwr, function(qq) {
     )
 ```
 
-The problem of the small and unequal sample sizes between groups became evident when we looked at the contingency table (Appendix table `r TabNum + 6`). Small counts in most cells, makes these analyses not very robust. But it needs to be noted that malnourished, sand fly inoculated mice experienced more frequently dissemination of parasites to other tissues than well-nourished, sand fly inoculated and malnourished needle inoculated mice. The latter had generally the lowest frequency of dissemination event, suggesting that a) parasite inoculation by sand fly bite increases the frequency of parasite dissemination, and that b) in the context of sand fly inoculation, malnourishment seems to further exacerbate the frequency of parasite dissemination.
+The problem of the small and unequal sample sizes between groups became evident when we looked at the contingency tables for each tissue (Appendix table `r TabNum + 6`). Small counts in most cells made these analyses not very robust. However, looking at the contingency tables it can be observed that malnourished, sand fly inoculated mice experienced more frequently dissemination of parasites to other tissues than well-nourished, sand fly inoculated or malnourished, needle inoculated mice. The latter had generally the lowest frequency of dissemination events, suggesting that a) parasite inoculation by sand fly bite increased the frequency of parasite dissemination, and that b) in the context of sand fly inoculation, malnourishment further exacerbate the frequency of parasite dissemination.
 
 ```{r table-115-event-occurrences, include = TRUE, eval = TRUE}
 lapply(DatC2Spt %>%
@@ -295,7 +295,7 @@ SubPwr <- PwrCalLgR %>%
   purrr::set_names(TisNam)
 ```
 
-We applied a logistic regression model to the same data and assessed the two predictor variables "Diet" and "Route" without an interaction term to assess individual predictor contribution to the outcome. The data output showed that infection by sand fly bite ("Route") was the statistically significant compared to needle inoculation only for the spleen. Malnourishment was close to being statistically significantly different from well-nourishment for the spleen, too. For all other tissues, there was no statistical significance observed (Appendix table `r TabNum + 7`).
+We applied a logistic regression model to the same data and assessed the two predictor variables "Diet" and "Route" without an interaction term to assess individual predictor contribution to the outcome. The data output showed that infection by sand fly bite ("Route") was statistically significant compared to needle inoculation only for the spleen. Malnourishment was close to being statistically significantly different from well-nourishment for the spleen, too. For all other tissues, there was no statistical significance observed (Appendix table `r TabNum + 7`).
 
 ```{r table-116-logistic-regression, include = TRUE, eval = TRUE}
 lapply(SubDat, function(zz) {
@@ -322,7 +322,7 @@ lapply(SubDat, function(zz) {
     )
 ```
 
-The odds ratios were nonsensical for eye and liver here (Appendix table `r TabNum + 8`), as they were for the contingency table analysis (Appendix table `r TabNum + 4`). Looking at the spleen, the infection route had a bigger impact on parasite dissemination than diet, although either odds ratio was statistically significant according to the 95% confidence intervals. For all other tissues, we did not obtain statistical significnace.
+The odds ratios were nonsensical for eye and liver here (Appendix table `r TabNum + 8`), just as they had been for the contingency table analysis above (Appendix table `r TabNum + 4`). Looking at the spleen, the infection route had a bigger impact on parasite dissemination than diet, although either odds ratio was statistically significant according to the 95% confidence intervals. For all other tissues, we did not obtain statistical significance.
 
 ```{r table-117-odds-ratio, include = TRUE, eval = TRUE}
 lapply(SubDat, function(zz) {
@@ -387,7 +387,7 @@ lapply(SubDat, function(qq) {
     ) 
 ```
 
-However, although, in general, there was no statistically significance in the logistic regression model with the exception of the infection route in the spleen that did not mean that there was no meaningful biological effect. A retrospective sample size and power calculation with the study data showed that the study was well underpowered for the logistic regression for all tissues (Appendix table `r TabNum + 10`), as it had already been shown for the contingency table analysis (Appendix table `r TabNum + 5`). But larger sample sizes, in particular, as inidcated by the sample size calculation, were prohibitive due to cost and loss of life.
+However, although, in general, there was no statistically significance in the logistic regression model with the exception of the infection route in the spleen that did not mean that there was no meaningful biological effect. A retrospective sample size and power calculation with the study data showed that the study was well underpowered for the logistic regression for all tissues (Appendix table `r TabNum + 10`), as it had already been the case for the contingency table analysis (Appendix table `r TabNum + 5`), suggesting that the lack of statistical significance may be due to type II errors. But larger sample sizes as indicated by the sample size calculation, were prohibitive due to cost and loss of life.
 
 ```{r table-119-power-calculation, include = TRUE, eval = TRUE}
 SubPwr %>%
@@ -422,7 +422,7 @@ SubPwr %>%
     )
 ```
 
-Even so, there was a good indication of potential biological significance. Considering the predicted probability of parasite dissemination for most tissues, it can be seen that being malnourished and inoculated by a sand fly increased the probability of parasite dissemination for most tissue beyond the other conditions (Appendix table `r TabNum + 11`). With exception of the spleen, the large confidence intervals did not render statistical significance in all other tissues, which does not exclude biological significance, though.
+Even so, there was a good indication of potential biological significance. Considering the predicted probability of parasite dissemination for most tissues, it can be seen that being malnourished and inoculated by a sand fly increased the probability of parasite dissemination for most tissues beyond the other conditions (Appendix table `r TabNum + 11`). With exception of the spleen, the large confidence intervals did not render statistical significance in all other tissues, which did not exclude biological significance, though.
 
 ```{r table-120-probability, include = TRUE, eval = TRUE}
 lapply(SubDat, function(zz) {

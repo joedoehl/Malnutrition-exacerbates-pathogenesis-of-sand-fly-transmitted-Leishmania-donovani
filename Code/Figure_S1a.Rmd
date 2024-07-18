@@ -46,7 +46,7 @@ GrpN <- lapply(Dat2wMSpt, function(qq) {
 
 ## Data analysis
 
-In figure S1a, we present the longitudinal weekly observation of mouse body weight pre *Leishmania donovani* infection, to assess the impact of well-nourishing and malnourishing diets on the BALB/c mice. Information of a total of *N*=`r TotN` BALB/c mice (`r GrpN`) over the course of 7 weeks are shown here; "Week_0" being the weight before shipment, "Week_7" being the final weight before infection.
+In figure S1a, we present the longitudinal weekly observation of mouse body weight pre *Leishmania donovani* infection, to assess the impact of well-nourishing and malnourishing diets on the BALB/c mouse weight. Information of a total of *N*=`r TotN` BALB/c mice (`r GrpN`) over the course of 7 weeks are shown here; "Week_0" being the weight before shipment, "Week_7" being the final weight before infection.
 
 We needed to analyze the data with a two-way approach to account for the two predictors, "Time_point" was the within-subject factor, while "Diet" was the between-subject factors in the analysis with "Weight_g" being the dependent outcome variable.
 
@@ -59,13 +59,13 @@ For a two-way mixed ANOVA, we had to assess the data for compliance with assumpt
 -   Assumption of sphericity
 
 
-### Assumption analyses
+## Assumption analyses
 
-#### Data normality
+### Data normality
 
-The assessment of the untransformed data distribution for each group was conducted by Shapiro-Wilks test and QQ-plot after splitting the data by both predictors. Note that all groups consisted of *N*=`r GrpN` individuals, which made groups large enough to assess data distribution reliably by Shapiro-Wilks test. Thus, we performed the analyses by Shapiro-Wilks test (Appendix table `r TabNum + 1`) and QQ-pots (Fig.S1a-1) and found deviations from normality only at the Week_0 time point.
+The assessment of the untransformed data distribution for each group was conducted by Shapiro-Wilks test and QQ-plot after splitting the data by both predictors. Note that all groups consisted of *N*=`r GrpN` individuals, which made groups large enough to assess data distribution reliably by Shapiro-Wilks test. Thus, we performed the analyses by Shapiro-Wilks test (Appendix table `r TabNum + 1`) and QQ-plots (Fig.S1a-1) and found deviations from normality only at the Week_0 time point.
 
-```{r table-87-shapiro-wilks, include = TRUE, eval = TRUE}
+```{r table-160-shapiro-wilks, include = TRUE, eval = TRUE}
 # Data normality assumption
 
 # Data table: Myeloid cells
@@ -77,7 +77,7 @@ SubDat[[FigNam]][["Data_Normality_Assumption"]] %>%
   gt(rowname_col = "Time_point") %>%
     tab_stubhead(label = "Weeks p.i.") %>%
     tab_header(
-      title = md("**Appendix Table 87**"),
+      title = md("**Appendix Table 160**"),
       subtitle = md("**Univariate Shapito-Wilks test results**")
     ) %>%
     tab_style(
@@ -86,16 +86,16 @@ SubDat[[FigNam]][["Data_Normality_Assumption"]] %>%
     )
 ```
 
-```{r qq-plot-figure-S1a, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 9, out.width = "95%", fig.cap = "Fig.S1a-1: QQ-plots of myeloid cell counts split into groups by predictor variables"}
+```{r qq-plot-figure-S1a, include = TRUE, eval = TRUE, fig.align = "center", fig.height = 9, out.width = "95%", fig.cap = "Fig.S1a-1: QQ-plots of mouse weights pre-infestation split into groups by predictor variables"}
 SubDat[[FigNam]][["QQ plot: by groups"]]
 ```
 
 
-#### Homogeneity of variance
+### Homogeneity of variance
 
 The assessment of homogeneity of variance was conducted by Levene's test for the dataset split by the within-subject factor ("Time_point"). The analysis output showed that assumption of homogeneity between groups held for each week (Appendix table `r TabNum + 2`).
 
-```{r table-88-homogeneity-of-variance, include = TRUE, eval = TRUE}
+```{r table-161-homogeneity-of-variance, include = TRUE, eval = TRUE}
 # Homogenetiy of variance test: Levene's test outcome
 SubDat[[FigNam]][["Homogeneity_of_Variance"]] %>%
   mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
@@ -104,7 +104,7 @@ SubDat[[FigNam]][["Homogeneity_of_Variance"]] %>%
   gt(rowname_col = "Time_point") %>%
     tab_stubhead(label = "Weeks p.i.") %>%
     tab_header(
-      title = md("**Appendix Table 88**"),
+      title = md("**Appendix Table 161**"),
       subtitle = md("**Assessment of homogeneity of variance by week**")
     ) %>%
     tab_style(
@@ -114,11 +114,11 @@ SubDat[[FigNam]][["Homogeneity_of_Variance"]] %>%
 ```
 
 
-#### Outliers
+### Outliers
 
 We found no outliers in the data (Appendix table `r TabNum + 3`).
 
-```{r table-89-outlier-test, include = TRUE, eval = TRUE}
+```{r table-162-outlier-test, include = TRUE, eval = TRUE}
 # Data outliers
 if (nrow(SubDat[[FigNam]][["Outliers"]]) == 0) {
   
@@ -126,7 +126,7 @@ if (nrow(SubDat[[FigNam]][["Outliers"]]) == 0) {
   # Build a table
     gt() %>%
       tab_header(
-        title = md("**Appendix Table 89**"),
+        title = md("**Appendix Table 162**"),
         subtitle = md("**List of possible outliers**")
       ) %>%
       tab_style(
@@ -150,11 +150,11 @@ if (nrow(SubDat[[FigNam]][["Outliers"]]) == 0) {
 }
 ```
 
-#### Homogeneity of covariance
+### Homogeneity of covariance
 
 There was a statistically significant violation of the assumption of homogeneity of covariance as the p-value was <0.0001. We settled for a robust two-way ANOVA to buffer some of the effect of this violation, but only low p-values can be regarded as significant (Appendix table `r TabNum + 4`).
 
-```{r table-90-analysis-of-covariance, include = TRUE, eval = TRUE}
+```{r table-163-analysis-of-covariance, include = TRUE, eval = TRUE}
 SubDat[[FigNam]][["Box's M test"]] %>%
   dplyr::select(-method) %>%
   mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
@@ -163,7 +163,7 @@ SubDat[[FigNam]][["Box's M test"]] %>%
   gt(rowname_col = "Group") %>%
     tab_stubhead(label = "Groups") %>%
     tab_header(
-      title = md("**Appendix Table 89**"),
+      title = md("**Appendix Table 163**"),
       subtitle = md("**Box's M-test for homogenetiy of covariance**")
     ) %>%
     tab_style(
@@ -172,11 +172,11 @@ SubDat[[FigNam]][["Box's M test"]] %>%
     )
 ```
 
-#### Sphericity
+### Sphericity
 
 We ran a standard two-way ANOVA on the untransformed data to obtain information on the Mauchly's test of sphericity, which showed a clear violation of this assumption. This required the application of Greenhouse-Geisser sphericity correction to the data (Appendix table `r TabNum + 5`).
 
-```{r table-91-mauchly-s-test, , include = TRUE, eval = TRUE}
+```{r table-164-mauchly-s-test, , include = TRUE, eval = TRUE}
 SubDat[[FigNam]][["Spericity assumption"]][["Mauchly's Test for Sphericity"]] %>% # Greenhouse-Geisser sphericity correction
   mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
   mutate(., across("p", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
@@ -184,7 +184,7 @@ SubDat[[FigNam]][["Spericity assumption"]][["Mauchly's Test for Sphericity"]] %>
   gt(rowname_col = "Group") %>%
     tab_stubhead(label = "Groups") %>%
     tab_header(
-      title = md("**Appendix Table 89**"),
+      title = md("**Appendix Table 164**"),
       subtitle = md("**Mauchly's Test for Sphericity**")
     ) %>%
     tab_style(
@@ -194,11 +194,11 @@ SubDat[[FigNam]][["Spericity assumption"]][["Mauchly's Test for Sphericity"]] %>
 ```
 
 
-### Two-way analysis
+## Two-way mixed analysis
 
 Based on the assumption analysis, we decided to apply a `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["2-way_analysis_applied",]` to the dataset to determine the effects of "Diet" and time post infection ("Time_point") on mouse weight over time (Appendix table `r TabNum + 6`). The test output showed that both individual predictors were statistically significant, with the two-way interactions also being statistically significant.
 
-```{r table-91-two-way-anova, include = TRUE, eval = TRUE}
+```{r table-165-two-way-mixed-anova, include = TRUE, eval = TRUE}
 # Two-way ANOVA
 SubDat[[FigNam]][["2-way_ANOVA_post_hoc"]] %>%
   capture.output(.) %>%
@@ -224,7 +224,7 @@ SubDat[[FigNam]][["2-way_ANOVA_post_hoc"]] %>%
   gt(rowname_col = "Predictor") %>%
     tab_stubhead(label = "Predictor") %>%
     tab_header(
-      title = md("**Appendix Table 91**"),
+      title = md("**Appendix Table 165**"),
       subtitle = md("**Robust two-way ANOVA**")
     ) %>%
     tab_style(
@@ -233,9 +233,9 @@ SubDat[[FigNam]][["2-way_ANOVA_post_hoc"]] %>%
     )
 ```
 
-For the analysis of the simple main effect for each respective between-subject factor, we performed `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["1-way_analysis_applied",]` with the between-subject factor ("Diet") split by the within-subject factor ("Time_point"). The results showed that "Diet" caused statistically significant differences with the exception of "Week_0" (Table `r TabNum + 7`).
+For the analysis of the simple main effect for each respective between-subject factor, we performed `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["1-way_analysis_applied",]` with the between-subject factor ("Diet") split by the within-subject factor ("Time_point"). The results showed that "Diet" caused statistically significant differences with the exception of "Week_0" (Appendix table `r TabNum + 7`).
 
-```{r table-92-one-way-anova, include = TRUE, eval = TRUE}
+```{r table-166-one-way-anova, include = TRUE, eval = TRUE}
 # One-way ANOVA
 # Data table
 SubDat[[FigNam]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
@@ -245,7 +245,7 @@ SubDat[[FigNam]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
   gt(rowname_col = "Time_point") %>%
     tab_stubhead(label = "Weeks p.i.") %>%
     tab_header(
-      title = md("**Appendix Table 92**"),
+      title = md("**Appendix Table 166**"),
       subtitle = md("**Robust one-way ANOVA**")
     ) %>%
     tab_style(
@@ -254,9 +254,9 @@ SubDat[[FigNam]][["1-way_ANOVA_simple_simple_main_effect"]] %>%
     )
 ```
 
-For the pairwise comparison, we applied a `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["Pairwise_analysis_applied",]` (Table `r TabNum + 8`). Since the "Diet" predictor only had two factor levels, the output showed the same result as the `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["1-way_analysis_applied",]` above (Table `r TabNum + 7`).
+For the pairwise comparison, we applied a `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["Pairwise_analysis_applied",]` (Appendix table `r TabNum + 8`). Since the "Diet" predictor only had two factor levels, the output showed the same result as the `r SubDat[[FigNam]][["Assumption_Test_Outcome"]]["1-way_analysis_applied",]` above (Appendix table `r TabNum + 7`).
 
-```{r table-94-pairwise-comparison, include = TRUE, eval = TRUE}
+```{r table-167-pairwise-comparison, include = TRUE, eval = TRUE}
 # Pairwise comparison
 # This table is only for Diet as predictor and only rows with significant p-values
 SubDat[[FigNam]][["Pairwise_simple_simple_comparison"]] %>%
@@ -269,7 +269,7 @@ SubDat[[FigNam]][["Pairwise_simple_simple_comparison"]] %>%
   gt(rowname_col = "Time_point") %>%
     tab_stubhead(label = "Weeks p.i.") %>%
     tab_header(
-      title = md("**Appendix Table 93**"),
+      title = md("**Appendix Table 167**"),
       subtitle = md("**Robust one-way ANOVA - sig. summary**")
     ) %>%
     tab_style(
@@ -281,7 +281,7 @@ SubDat[[FigNam]][["Pairwise_simple_simple_comparison"]] %>%
 
 ## Conclusion
 
-In conclusion, "Diet" was a potent predictor for mouse weight gain over time.
+In conclusion, "Diet" was a potent predictor for mouse weight gain over time pre-infestation.
 
 ```{r update-table-number-figure-S1a}
 TabNum <- TabNum + 8

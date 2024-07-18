@@ -1,0 +1,236 @@
+---
+title: "Figure 4a"
+author: "Johannes S. P. Doehl"
+date: "2024-06-26"
+output: pdf_document
+---
+
+~~~{=comment}
+# Setup
+~~~
+```{r setup-figure-4a, echo = FALSE, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, eval = TRUE, cache = TRUE, dev = "png", warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
+options(java.parameters = "-Xmx200000m")
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre-1.8') # Needed to get around loading error of rJava
+```
+
+```{r extract-relevant-data-for-figure-4a}
+# Figure name
+FigNam <- "Figure 4a"
+
+# Name of tissue processed
+TisNam <- RegModAICPct %>%
+  .[names(.) %like% FigNam] %>%
+  names(.) %>%
+  gsub(".*4a ", "", .)
+
+# Subset data for figure 4a
+SubDat <- RegModAICPct %>%
+  .[names(.) %like% FigNam] %>%
+  purrr::set_names(TisNam)
+
+# Total mice used
+TotN <- lapply(DatPctSpt %>%
+                 .[names(.) %like% FigNam], function(zz) {
+  nrow(zz)
+}) %>%
+  purrr::set_names(TisNam)
+
+# Total N per group
+GrpN <- mapply(function(xx, yy) {
+  table(yy$Diet, yy$Route) %>%
+    as.data.frame(.) %>%
+    unite(., c(Var1, Var2), col = "Group", sep = "_") %>%
+    tibble::column_to_rownames("Group") %>%
+    set_colnames(xx)
+  
+}, xx = TisNam, yy = DatPctSpt %>%
+                 .[names(.) %like% FigNam], SIMPLIFY = FALSE) %>%
+  bind_cols(.)
+
+# Dispersion ratio
+DispRatPct <- lapply(SubDat, function(ww) {
+  ww[[1]][["Dispersion test"]] %>%
+    as.data.frame(.)
+}) %>%
+  bind_rows(., .id = "Cells") %>%
+  tibble::column_to_rownames("Cells") %>%
+  set_colnames("Dispersion Ratio")
+
+# Pseudo-R2
+pR2Pct <-lapply(SubDat, function(vv) {
+  vv[[1]][["Regression model"]] %>%
+    summary(.) %>%
+    .[["pseudo.r.squared"]] %>%
+    as.data.frame(.)
+}) %>%
+  bind_rows(., .id = "Cells") %>%
+  tibble::column_to_rownames("Cells") %>%
+  set_colnames("Pseudo R^2")
+
+# Likelihood ratio test to determine predictor relevance in model against null model
+LRTPct <- lapply(SubDat, function(uu) {
+  uu[[1]][["Likelihood ratio test"]]
+}) %>%
+  purrr::set_names(TisNam)
+```
+
+Here, we analyzed the proportion of necrophiliacs, monocytes and lymphocytes in terminal bleeds from in well-nourished (WN) and malnourished (MN) BALB/c mice infected with *Leishmania donovani* parasite via sand fly bites (SF) for up to 30 weeks or not. We analyzed a total of *N*=`r TotN[[1]]` BALB/c mice. The different groups had varying sample sizes (Appendix table `r TabNum + 1`). For the data analysis, we tested Poisson and negative binomial regression models of the normalized cell counts, or beta regression after conversion of percentiles to ratios. Based on the Akaike information criterion (AIC), we selected a `r RegModAICPct %>% .[names(.) %like% FigNam & names(.) %like% TisNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` model for the data analysis post data conversion. The model fit of the data was reasonable producing no statistically significant departure from 1 for its dispersion ratio and producing reasonable pseudo-R^2^ values of all three cell groups (Appendix table `r TabNum + 1`). 
+
+```{r table-121-sample-size-information, include = TRUE, eval = TRUE}
+# Sample size information by cell type
+rbind(TotN %>%
+        bind_cols(.) %>%
+        as.data.frame(.) %>%
+        set_rownames("Total N"),
+      GrpN
+) %>%
+  t(.) %>%
+  cbind(.,
+        round(DispRatPct, 4),
+        round(pR2Pct, 4)
+) %>%
+  # Build a table
+  gt(rownames_to_stub = TRUE) %>%
+    tab_stubhead(label = "Cells") %>%
+    tab_header(
+      title = md("**Appendix Table 121**"),
+      subtitle = md("**Summary information**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+The model output showed that infection "Route" was always a statistically significant predictor for all three cell types, while the nutritional state of the mice had a statistical significant effect only for monocytes (Appendix table `r TabNum + 2`). The interaction between "Route" and "Diet" was statistically significant for lymphocytes and monocytes, but not for neutrophils. Please, note that "other" referred to the small reminder of detected blood cells that were not accounted for.
+
+```{r table-122-regression-analysis-of-counts, include = TRUE, eval = TRUE}
+# Model output
+lapply(SubDat, function(zz) {
+  zz[[1]][["Regression model"]] %>%
+    summary(.) %>%
+    stats::coef(.) %>%
+    .[["mean"]] %>%
+    as.data.frame(.) %>%
+    tibble::rownames_to_column(., var = "Factors")
+}) %>%
+  bind_rows(., .id = "Cells") %>%
+  mutate(., across(where(is.character), as.factor)) %>%
+  mutate(., "sig." = .[["Pr(>|z|)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("Pr(>|z|)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  group_by(Cells) %>%
+  # Build a table
+  gt(rowname_col = "Factors") %>%
+    tab_stubhead(label = "Factors") %>%
+    tab_header(
+      title = md("**Appendix Table 122**"),
+      subtitle = md("**Beta regression model output**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+The likelihood ratio test confirmed that the inclusion of both predictors in the model was statistically significant for all three cell types (Appendix table `r TabNum + 3`).
+
+```{r table-123-likelihood-ratio-test, include = TRUE, eval = TRUE}
+# Likelihood ratio test to compare model to null model
+LRTPct %>% 
+  bind_rows(., .id = "Cells") %>%
+  mutate(., "sig." = .[["Pr(>Chisq)"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("Pr(>Chisq)", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  group_by(Cells) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 123**"),
+      subtitle = md("**Likelihood ratio test against null model**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+The pairwise comparison was based on the estimated marginal means. For lymphocytes, it showed that malnourished, sand fly inoculated mice had statistically significantly less lymphocytes in the blood than the three other groups (Appendix table `r TabNum + 4` & Appendix table `r TabNum + 5`). For monocytes, the pairwise comparison showed that malnourished control animals had statistically significantly less monocytes in circulation. Conversely, after infection by sand fly bite, malnourished mice had statistically significantly more monocytes in circulation. For neutrophils, we observed statistically significantly more neutrophils in circulation in malnourished, sand fly inoculated mice compared to the other three groups.
+
+```{r table-124-pairwise-comparison, include = TRUE, eval = TRUE}
+lapply(SubDat, function(ww) {
+  ww[[1]][["Pairwise Comparison of EMMs"]] %>%
+  as.data.frame(.) 
+  }) %>%
+  bind_rows(., .id = "Cells") %>%
+  mutate(., "sig." = .[["p.value"]] %>%
+           symnum(.,
+                  cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 0.1, 1),
+                  symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  group_by(Cells) %>%
+  # Build a table
+  gt(rowname_col = "contrast") %>%
+    tab_stubhead(label = "Predictor pairs") %>%
+    tab_header(
+      title = md("**Appendix Table 124**"),
+      subtitle = md("**Pairwise comparison based on estimated marginal means**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+```{r table-125-pairwise-comparison-letter, include = TRUE, eval = TRUE}
+lapply(SubDat, function(ww) {
+  ww[[1]][["Pairwise Comparison of EMMs (letters)"]] %>%
+  as.data.frame(.) 
+  }) %>%
+  bind_rows(., .id = "Cells") %>%
+  mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
+  group_by(Cells) %>%
+  # Build a table
+  gt() %>%
+    tab_header(
+      title = md("**Appendix Table 125**"),
+      subtitle = md("**Pairwise comparison letter code**")
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels()
+    ) %>%
+    cols_align(
+      align = "right",
+      columns = everything()
+    )
+```
+
+
+```{r update-table-number-figure-4a}
+TabNum <- TabNum + 5
+```

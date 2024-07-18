@@ -100,11 +100,9 @@ pR2 <- lapply(RegModDisp %>%
   set_colnames("Pseudo R^2")
 ```
 
-Here, we present the parasite counts from several isolated tissues (brain, ears, eyes, liver, paw and spleen) according to qPCR as a measure of parasite dissemination to these tissues. To analyze the data, we had to re-scale it, due to the occurrence of zero-values in instances of no detection, by dividing all value by the smallest non-zero value in the dataset. This resulted in a approximate Poisson / negative binomial distribution, which allowed the convenient analysis of the re-scaled and rounded counts by the appropriate models for these distributions.
+Here, we present the parasite counts from several isolated tissues (brain, ears, eyes, liver, paw and spleen) according to qPCR as a measure of parasite dissemination to these tissues. To analyze the data, we had to re-scale it, due to the frequent occurrence of zero-values due to instances of no detection, by dividing all values by the smallest non-zero value in the dataset. This resulted in an approximate Poisson / negative binomial distribution, which allowed the convenient analysis of the re-scaled and rounded counts by the appropriate models for these distributions.
 
-We analyzed a total of *N*=`r TotN` BALB/c mice (`r paste(names(SampleN), SampleN, sep = "=", collapse = ", ")`). These were the same mice as analyzed in figure 2a for parasite dissemination events. Here, we quantified parasite burden per isolated draining lymph node. For the data analysis we tested several Poisson and negative binomial-type regression models. Based on the dispersion factor we selected a `r RegModAIC %>% .[names(.) %like% FigNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` regression model for the data analysis post data re-scaling. The model fitted the data well producing no statistically significant departure from 1 for its dispersion ratio (`r paste(names(DispRat), DispRat, sep = ": ", collapse = ", ")`) and showing a reasonable pseudo-R^2^ (`r paste(pR2, collapse = ": ")`). The model output showed that both, "Diet" and "Route" were statistically significant predictors, but there was no statistically significant interaction between these two predictors.
-
-We analyzed varying total *N* of the different tissue samples (Appendix table `r TabNum + 1`). Total *N* and group *N* were dependent on available animals. While the spleen was always collected, other tissue types were only considered later in the study, as to why their total *N* is much lower. In general, a zero-inflated negative binomial model was the fit our data, with the exception of eye and liver sample, where a zero-inflated Poisson and standard Poisson regression model fitted best, respectively.
+We analyzed varying total *N* of the different tissue samples (Appendix table `r TabNum + 1`). Total *N* and group *N* were dependent on available animals. While the spleen was always collected, other tissue types were only considered later in the study, as to why their total *N* is much lower. In general, a zero-inflated negative binomial model was the best fit our data, with the exception of eye and liver sample, where a zero-inflated Poisson and standard Poisson regression model fitted best, respectively. Model fit was assessed by overdispersion test and pseudo r^2^.
 
 ```{r table-106-summary-information-for-all-tisues, include = TRUE, eval = TRUE}
 # Summary information
@@ -174,7 +172,7 @@ merge(
     )
 ```
 
-The summary of the best fitting model according to dispersion test, rather than AIC in this case, is shown in appendix table `r TabNum + 2`. In general, malnourished, needle inoculated moce served as the reference sample in the regression analysis. 
+The summary of the best fitting models per tissue, according to dispersion test, rather than AIC in this case, is shown in appendix table `r TabNum + 2`. In general, malnourished, needle inoculated mice served as the reference sample in the regression analysis. Statistical significance was only observed for ear and spleen.
 
 ```{r table-107-regression-analysis-of-counts, include = TRUE, eval = TRUE}
 # Model output
@@ -221,7 +219,7 @@ lapply(SubDat, function(qq) {
     )
 ```
 
-We applied a pairwise comparison based on the estimated marginal means for each tissue, respectively (Appendix table `r TabNum + 2` and `r TabNum + 3`). The analysis showed no statistically significant difference between groups for the tissues brain, eye and liver. For the paw, we observed a statistically significant difference between well-nourished and malnourished sand fly inoculated mice, but the result may not be reliable due to the small sample size. For the ear samples we observed statistically significant difference between all pairs with the well-nourished, sand fly inoculated mice clustering most strongly away from either malnourished group. In case of the spleen, it was the malnourished, sand fly inoculated group that was statistically significantly different from the other two group, suggesting significantly higher and more frequent occurrence of parasites in that group.
+We applied a pairwise comparison based on the estimated marginal means for each tissue, respectively (Appendix table `r TabNum + 2` and `r TabNum + 3`). The analysis showed no statistically significant difference between groups for the tissues brain, eye and liver. For the paw, we observed a statistically significant difference between well-nourished and malnourished sand fly inoculated mice, but the result may not be reliable due to the small sample size. For the ear samples we observed statistically significant difference between all pairs with the well-nourished, sand fly inoculated mice clustering most strongly away from either malnourished group. In case of the spleen, it was the malnourished, sand fly inoculated group that was statistically significantly different from the other two groups, suggesting significantly higher and more frequent occurrence of parasites in spleen in this group.
 
 ```{r table-108-pairwise-comparison, include = TRUE, eval = TRUE}
 lapply(SubDat, function(zz) {

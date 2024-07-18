@@ -74,6 +74,7 @@ libraries("aod",
           "rmarkdown",
           "rstatix",
           "RVAideMemoire",
+          "stringi",
           "survival",
           "survminer",
           "tidyverse",
@@ -432,8 +433,9 @@ This is the start of the rendered document.
 ~~~{=comment}
 Quick summary of the statistics report
 ~~~
-```{r summary, child = "Summary.Rmd", eval = FALSE}
+```{r summary, child = "Summary.Rmd", eval = TRUE}
 ```
+
 
 # Main Body
 
@@ -443,6 +445,8 @@ General statements about procedure
 ```{r main-body, child = "Main_Body.Rmd", eval = TRUE}
 ```
 
+
+# Main Figures
 
 ## Figure 1
 
@@ -568,7 +572,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-4-a, child = "Figure_4a.Rmd", eval = FALSE}
+```{r figure-4-a, child = "Figure_4a.Rmd", eval = TRUE}
 ```
 
 
@@ -576,7 +580,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-4-b, child = "Figure_4b.Rmd", eval = FALSE}
+```{r figure-4-b, child = "Figure_4b.Rmd", eval = TRUE}
 ```
 
 
@@ -584,7 +588,7 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-4-c, child = "Figure_4c.Rmd", eval = FALSE}
+```{r figure-4-c, child = "Figure_4c.Rmd", eval = TRUE}
 ```
 
 
@@ -592,11 +596,12 @@ General statements about procedure
 
 ~~~{=comment}
 ~~~
-```{r figure-4-d-e, child = "Figure_4d_e.Rmd", eval = FALSE}
+```{r figure-4-d-e, child = "Figure_4d.Rmd", eval = TRUE}
 ```
 
+# Supplementary Figures
 
-## Supplementary Figure 1
+## Figure S1
 
 ### Panel a
 
@@ -614,11 +619,11 @@ General statements about procedure
 ```
 
 
-## Supplementary Figure 3
+## Figure S3
 
 ### Panel c
 
 ~~~{=comment}
 ~~~
-```{r figure-S3-c, child = "Figure_S1a.Rmd", eval = FALSE}
+```{r figure-S3-c, child = "Figure_S3c.Rmd", eval = TRUE}
 ```

@@ -57,11 +57,9 @@ pR2 <- RegModAIC %>%
   .[3,]
 ```
 
-Here, we present the parasite counts per isolated draining lymph node according to qPCR as a measure of parasite dissemination to the organ. To analyze this data, we had to re-scale it, due to the occurrence of zero-values in instances of no detection, by dividing all value by the smallest non-zero value in the dataset. This resulted in a approximate Poisson / negative binomial distribution, which allowed the convenient analysis of the re-scaled and rounded counts by the appropriate models for these distributions.
+We analyzed a total of *N*=`r TotN` BALB/c mice (`r GrpN`). These were the same mice as analyzed in figure 2a for parasite dissemination events. Here, we quantified sand fly feeding success by counting the number of visibly fed sand flies. For the data analysis we tested several Poisson and negative binomial-type regression models. Based on the Akaike information criterion (AIC) we selected a `r RegModAIC %>% .[names(.) %like% FigNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` regression model for the data analysis post data re-scaling. The model fitted the data well producing no statistically significant departure from 1 for its dispersion ratio (`r paste(names(DispRat), DispRat, sep = ": ", collapse = ", ")`), but showing only a small pseudo-R^2^ (`r paste(pR2, collapse = ": ")`). The model output showed that "Diet" was not a statistically significant predictor, suggesting that the nutritional state of the mice did not impact the sand flies ability to feed on them (Appendix table `r TabNum + 1`).
 
-We analyzed a total of *N*=`r TotN` BALB/c mice (`r GrpN`). These were the same mice as analyzed in figure 2a for parasite dissemination events. Here, we quantified sand fly feeding success by counting the number of visibly fed sand flies. For the data analysis we tested several Poisson and negative binomial-type regression models. Based on the Akaike information criterion (AIC) we selected a `r RegModAIC %>% .[names(.) %like% FigNam] %>% .[[1]] %>% names(.) %>% gsub("*- ", "", .)` regression model for the data analysis post data re-scaling. The model fitted the data well producing no statistically significant departure from 1 for its dispersion ratio (`r paste(names(DispRat), DispRat, sep = ": ", collapse = ", ")`) and showing a reasonable pseudo-R^2^ (`r paste(pR2, collapse = ": ")`). The model output showed that both, "Diet" was not a statistically significant predictor, suggesting that the noutrishional state of the mice did not impact the sand flies capacity to feed on them (Appendix table `r TabNum + 1`).
-
-```{r table-73-regression-analysis-of-counts, include = TRUE, eval = TRUE}
+```{r table-168-regression-analysis-of-counts, include = TRUE, eval = TRUE}
 # Model output
 RegModAIC %>%
   .[names(.) %like% FigNam] %>%
@@ -81,7 +79,7 @@ RegModAIC %>%
   gt(rownames_to_stub = TRUE) %>%
     tab_stubhead(label = "Predictors") %>%
     tab_header(
-      title = md("**Appendix Table 73**"),
+      title = md("**Appendix Table 168**"),
       subtitle = md("**Negative binomial regression model output**")
     ) %>%
     tab_style(
@@ -94,9 +92,9 @@ RegModAIC %>%
     )
 ```
 
-The pairwise comparison based on the estimated marginal means showed that sand flies just as well on well-nourished aimals as on malnourished animals excluding any unintended parasite inoculation bias due to nutritional state (Appendix table `r TabNum + 2` and `r TabNum + 3`).
+The pairwise comparison based on the estimated marginal means showed that sand flies fed just as well on well-nourished animals as on malnourished animals excluding any unintended parasite inoculation bias due to the nutritional state (Appendix table `r TabNum + 2` and `r TabNum + 3`).
 
-```{r table-74-pairwise-comparison, include = TRUE, eval = TRUE}
+```{r table-169-pairwise-comparison, include = TRUE, eval = TRUE}
 RegModAIC %>%
   .[names(.) %like% FigNam] %>%
   .[[1]] %>% # pulls out the data from the list
@@ -113,7 +111,7 @@ RegModAIC %>%
   gt(rowname_col = "contrast") %>%
     tab_stubhead(label = "Predictor pairs") %>%
     tab_header(
-      title = md("**Appendix Table 74**"),
+      title = md("**Appendix Table 169**"),
       subtitle = md("**Pairwise comparison based on estimated marginal means**")
     ) %>%
     tab_style(
@@ -126,7 +124,7 @@ RegModAIC %>%
     )
 ```
 
-```{r table-75-pairwise-comparison-letter, include = TRUE, eval = TRUE}
+```{r table-170-pairwise-comparison-letter, include = TRUE, eval = TRUE}
 RegModAIC%>%
   .[names(.) %like% FigNam] %>%
   .[[1]] %>% # pulls out the data from the list
@@ -136,7 +134,7 @@ RegModAIC%>%
   # Build a table
   gt() %>%
     tab_header(
-      title = md("**Appendix Table 75**"),
+      title = md("**Appendix Table 170**"),
       subtitle = md("**Pairwise comparison letter code**")
     ) %>%
     tab_style(
@@ -148,7 +146,6 @@ RegModAIC%>%
       columns = everything()
     )
 ```
-
 
 
 ```{r update-table-number-figure-S1c}
