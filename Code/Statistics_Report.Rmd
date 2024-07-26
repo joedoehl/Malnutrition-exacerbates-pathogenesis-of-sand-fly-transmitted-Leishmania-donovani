@@ -592,11 +592,11 @@ General statements about procedure
 ```
 
 
-### Panel d and e
+### Panel d
 
 ~~~{=comment}
 ~~~
-```{r figure-4-d-e, child = "Figure_4d.Rmd", eval = TRUE}
+```{r figure-4-d, child = "Figure_4d.Rmd", eval = TRUE}
 ```
 
 # Supplementary Figures

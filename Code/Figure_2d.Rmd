@@ -117,6 +117,8 @@ RegModAIC %>%
                   symbols = c("****", "***", "**", "*", "+", "ns"))) %>%
   mutate(., across(where(is.numeric), ~ round(.x, 4))) %>%
   mutate(., across("p.value", ~ ifelse(.x < 0.0001, "<0.0001", format(.x, scientific = FALSE)))) %>%
+  dplyr::filter(!contrast %in% "MN Needle - WN SF", # Remove the pairs that are of no interest
+                !contrast %in% "WN Needle - MN SF") %>%
   # Build a table
   gt(rowname_col = "contrast") %>%
     tab_stubhead(label = "Predictor pairs") %>%

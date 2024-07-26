@@ -280,7 +280,7 @@ if (SubDat[[SubFigNam[2]]][["Assumption_Test_Outcome"]]["3-way_ANOVA_Test_applie
     tab_stubhead(label = "Predictors") %>%
     tab_header(
       title = md("**Appendix Table 34**"),
-      subtitle = md("**Myeloid cells: Robust three-way ANOVA**")
+      subtitle = md("**Myeloid cells: Simple linear regression**")
     ) %>%
     tab_style(
       style = cell_text(align = "center"),
@@ -300,6 +300,25 @@ GrpNam <- SubDat[[SubFigNam[2]]][["Pairwise_simple_simple_comparison"]] %>%
 # Data table: Myeloid cells
 SubDat[[SubFigNam[2]]][["Pairwise_simple_simple_comparison"]][["Pairwise comparison"]] %>%
   as.data.frame(.) %>%
+  # Get only pairs that make sense for three-way analysis
+  .[
+SubDat[[SubFigNam[2]]][["Pairwise_simple_simple_comparison"]][["Pairwise comparison"]] %>%
+  as.data.frame(.) %>%
+  separate(., 
+           col = contrast, 
+           into = c("Diet1", "Route1", "TP1", "Sep", "Diet2", "Route2", "TP2"),
+           sep = " ") %>% 
+  mutate(., "equal_Diet" = .$Diet1 == .$Diet2,
+            "equal_Route" = .$Route1 == .$Route2,
+            "equal_TP" = .$TP1 == .$TP2) %>%
+  dplyr::select(equal_Diet, equal_Route, equal_TP) %>% 
+  t(.) %>% 
+  as.data.frame(.) %>%
+  colSums(. == "TRUE") %>%
+  .[which(. == 2)] %>%
+  names(.) %>%
+  as.numeric(.),] %>%
+  # Continue by modifying and adding additional columns
   mutate(., across(where(Hmisc::all.is.numeric), as.numeric)) %>%
   mutate(., "sig." = .[["p.value"]] %>%
              symnum(.,

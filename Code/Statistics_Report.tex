@@ -1431,7 +1431,7 @@ The test output of the Simple linear regression showed that only the ``Route'' a
 \begin{longtable}{l|rrrrlc}
 \caption*{
 {\large \textbf{Appendix Table 34}} \\ 
-{\small \textbf{Myeloid cells: Robust three-way ANOVA}}
+{\small \textbf{Myeloid cells: Simple linear regression}}
 } \\ 
 \toprule
 Predictors & {Df} & {Sum Sq} & {Mean Sq} & {F value} & {Pr(>F)} & {sig.} \\ 
@@ -1451,7 +1451,7 @@ As we performed a Simple linear regression, we were not able to analyze main and
 
 \begingroup
 \fontsize{12.0pt}{14.4pt}\selectfont
-\begin{longtable}{l|rrrrlc}
+\begin{longtable}{l|rrrrrc}
 \caption*{
 {\large \textbf{Appendix Table 37}} \\ 
 {\small \textbf{Myeloid cells: Pairwise comparison by Estimated marginal means analysis}}
@@ -1461,30 +1461,14 @@ Pairing & estimate & SE & df & t.ratio & p.value & sig. \\
 \midrule\addlinespace[2.5pt]
 WN Needle 24\_h - MN Needle 24\_h & 0.0682 & 0.0446 & 32 & 1.5309 & 0.9831 & ns \\ 
 WN Needle 24\_h - WN SF 24\_h & -0.2245 & 0.0446 & 32 & -5.0377 & 0.0005 & *** \\ 
-WN Needle 24\_h - MN SF 24\_h & -0.1871 & 0.0446 & 32 & -4.1991 & 0.0056 & ** \\ 
 WN Needle 24\_h - WN Needle 72\_h & 0.1651 & 0.0446 & 32 & 3.7043 & 0.0221 & * \\ 
-WN Needle 24\_h - MN Needle 72\_h & 0.0239 & 0.0446 & 32 & 0.5358 & 1.0000 & ns \\ 
-WN Needle 24\_h - WN SF 72\_h & -0.0634 & 0.0446 & 32 & -1.4230 & 0.9935 & ns \\ 
-WN Needle 24\_h - MN SF 72\_h & -0.1225 & 0.0446 & 32 & -2.7488 & 0.2399 & ns \\ 
-MN Needle 24\_h - WN SF 24\_h & -0.2928 & 0.0446 & 32 & -6.5686 & <0.0001 & **** \\ 
 MN Needle 24\_h - MN SF 24\_h & -0.2554 & 0.0446 & 32 & -5.7300 & 0.0001 & **** \\ 
-MN Needle 24\_h - WN Needle 72\_h & 0.0969 & 0.0446 & 32 & 2.1734 & 0.6547 & ns \\ 
 MN Needle 24\_h - MN Needle 72\_h & -0.0443 & 0.0446 & 32 & -0.9951 & 1.0000 & ns \\ 
-MN Needle 24\_h - WN SF 72\_h & -0.1317 & 0.0446 & 32 & -2.9539 & 0.1513 & ns \\ 
-MN Needle 24\_h - MN SF 72\_h & -0.1907 & 0.0446 & 32 & -4.2797 & 0.0044 & ** \\ 
 WN SF 24\_h - MN SF 24\_h & 0.0374 & 0.0446 & 32 & 0.8386 & 1.0000 & ns \\ 
-WN SF 24\_h - WN Needle 72\_h & 0.3896 & 0.0446 & 32 & 8.7421 & <0.0001 & **** \\ 
-WN SF 24\_h - MN Needle 72\_h & 0.2484 & 0.0446 & 32 & 5.5735 & 0.0001 & *** \\ 
 WN SF 24\_h - WN SF 72\_h & 0.1611 & 0.0446 & 32 & 3.6147 & 0.0282 & * \\ 
-WN SF 24\_h - MN SF 72\_h & 0.1020 & 0.0446 & 32 & 2.2889 & 0.5592 & ns \\ 
-MN SF 24\_h - WN Needle 72\_h & 0.3522 & 0.0446 & 32 & 7.9034 & <0.0001 & **** \\ 
-MN SF 24\_h - MN Needle 72\_h & 0.2110 & 0.0446 & 32 & 4.7349 & 0.0012 & ** \\ 
-MN SF 24\_h - WN SF 72\_h & 0.1237 & 0.0446 & 32 & 2.7761 & 0.2262 & ns \\ 
 MN SF 24\_h - MN SF 72\_h & 0.0646 & 0.0446 & 32 & 1.4503 & 0.9915 & ns \\ 
 WN Needle 72\_h - MN Needle 72\_h & -0.1412 & 0.0446 & 32 & -3.1685 & 0.0900 & + \\ 
 WN Needle 72\_h - WN SF 72\_h & -0.2285 & 0.0446 & 32 & -5.1274 & 0.0004 & *** \\ 
-WN Needle 72\_h - MN SF 72\_h & -0.2876 & 0.0446 & 32 & -6.4531 & <0.0001 & **** \\ 
-MN Needle 72\_h - WN SF 72\_h & -0.0873 & 0.0446 & 32 & -1.9588 & 0.8172 & ns \\ 
 MN Needle 72\_h - MN SF 72\_h & -0.1464 & 0.0446 & 32 & -3.2846 & 0.0671 & + \\ 
 WN SF 72\_h - MN SF 72\_h & -0.0591 & 0.0446 & 32 & -1.3258 & 0.9976 & ns \\ 
 \bottomrule
@@ -2589,8 +2573,6 @@ Predictor pairs & {estimate} & {SE} & {df} & {z.ratio} & {p.value} & {sig.} \\
 \midrule\addlinespace[2.5pt]
 MN Needle - WN Needle & 1.7918 & 0.7776 & Inf & 2.3041 & 0.0318 & * \\ 
 MN Needle - MN SF & -2.0715 & 0.7470 & Inf & -2.7729 & 0.0111 & * \\ 
-MN Needle - WN SF & -0.8775 & 0.7486 & Inf & -1.1721 & 0.2411 & ns \\ 
-WN Needle - MN SF & -3.8632 & 0.7732 & Inf & -4.9967 & <0.0001 & **** \\ 
 WN Needle - WN SF & -2.6692 & 0.7746 & Inf & -3.4458 & 0.0017 & ** \\ 
 MN SF - WN SF & 1.1940 & 0.7439 & Inf & 1.6050 & 0.1302 & ns \\ 
 \bottomrule
@@ -2653,8 +2635,6 @@ Predictor pairs & {estimate} & {SE} & {df} & {z.ratio} & {p.value} & {sig.} \\
 \midrule\addlinespace[2.5pt]
 MN Needle - WN Needle & 0.9391 & 0.4598 & Inf & 2.0424 & 0.0617 & + \\ 
 MN Needle - MN SF & -0.3943 & 0.4549 & Inf & -0.8669 & 0.3860 & ns \\ 
-MN Needle - WN SF & 1.5452 & 0.4652 & Inf & 3.3213 & 0.0027 & ** \\ 
-WN Needle - MN SF & -1.3334 & 0.4589 & Inf & -2.9054 & 0.0073 & ** \\ 
 WN Needle - WN SF & 0.6061 & 0.4692 & Inf & 1.2919 & 0.2357 & ns \\ 
 MN SF - WN SF & 1.9395 & 0.4644 & Inf & 4.1764 & 0.0002 & *** \\ 
 \bottomrule
@@ -4746,8 +4726,6 @@ Predictor pairs & {estimate} & {SE} & {df} & {z.ratio} & {p.value} & {sig.} \\
 \midrule\addlinespace[2.5pt]
 MN Ctrl - WN Ctrl & -0.0439 & 0.0357 & Inf & -1.2295 & 0.2827 & ns \\ 
 MN Ctrl - MN SF & 0.2266 & 0.0390 & Inf & 5.8162 & <0.0001 & **** \\ 
-MN Ctrl - WN SF & 0.0034 & 0.0393 & Inf & 0.0861 & 0.9314 & ns \\ 
-WN Ctrl - MN SF & 0.2705 & 0.0396 & Inf & 6.8380 & <0.0001 & **** \\ 
 WN Ctrl - WN SF & 0.0473 & 0.0399 & Inf & 1.1862 & 0.2827 & ns \\ 
 MN SF - WN SF & -0.2232 & 0.0428 & Inf & -5.2151 & <0.0001 & **** \\ 
 \midrule\addlinespace[2.5pt]
@@ -4755,8 +4733,6 @@ MN SF - WN SF & -0.2232 & 0.0428 & Inf & -5.2151 & <0.0001 & **** \\
 \midrule\addlinespace[2.5pt]
 MN Ctrl - WN Ctrl & -0.0163 & 0.0049 & Inf & -3.3427 & 0.0017 & ** \\ 
 MN Ctrl - MN SF & -0.0441 & 0.0075 & Inf & -5.8959 & <0.0001 & **** \\ 
-MN Ctrl - WN SF & -0.0214 & 0.0060 & Inf & -3.5446 & 0.0012 & ** \\ 
-WN Ctrl - MN SF & -0.0278 & 0.0086 & Inf & -3.2287 & 0.0019 & ** \\ 
 WN Ctrl - WN SF & -0.0051 & 0.0074 & Inf & -0.6920 & 0.4890 & ns \\ 
 MN SF - WN SF & 0.0227 & 0.0093 & Inf & 2.4337 & 0.0179 & * \\ 
 \midrule\addlinespace[2.5pt]
@@ -4764,8 +4740,6 @@ MN SF - WN SF & 0.0227 & 0.0093 & Inf & 2.4337 & 0.0179 & * \\
 \midrule\addlinespace[2.5pt]
 MN Ctrl - WN Ctrl & 0.0648 & 0.0338 & Inf & 1.9150 & 0.0832 & + \\ 
 MN Ctrl - MN SF & -0.1723 & 0.0391 & Inf & -4.4110 & <0.0001 & **** \\ 
-MN Ctrl - WN SF & -0.0036 & 0.0385 & Inf & -0.0941 & 0.9250 & ns \\ 
-WN Ctrl - MN SF & -0.2370 & 0.0387 & Inf & -6.1302 & <0.0001 & **** \\ 
 WN Ctrl - WN SF & -0.0684 & 0.0380 & Inf & -1.7977 & 0.0867 & + \\ 
 MN SF - WN SF & 0.1687 & 0.0428 & Inf & 3.9445 & 0.0002 & *** \\ 
 \midrule\addlinespace[2.5pt]
@@ -4773,8 +4747,6 @@ MN SF - WN SF & 0.1687 & 0.0428 & Inf & 3.9445 & 0.0002 & *** \\
 \midrule\addlinespace[2.5pt]
 MN Ctrl - WN Ctrl & -0.0017 & 0.0084 & Inf & -0.2016 & 0.8402 & ns \\ 
 MN Ctrl - MN SF & 0.0101 & 0.0076 & Inf & 1.3292 & 0.2757 & ns \\ 
-MN Ctrl - WN SF & 0.0161 & 0.0076 & Inf & 2.1329 & 0.0988 & + \\ 
-WN Ctrl - MN SF & 0.0118 & 0.0081 & Inf & 1.4546 & 0.2757 & ns \\ 
 WN Ctrl - WN SF & 0.0178 & 0.0081 & Inf & 2.2079 & 0.0988 & + \\ 
 MN SF - WN SF & 0.0060 & 0.0073 & Inf & 0.8227 & 0.4928 & ns \\ 
 \bottomrule
@@ -5877,7 +5849,7 @@ Diet:Route & Diet:Route & {\bfseries 0.66} & 67 & 5.82 & 1 & 63 \\
 \end{longtable}
 \endgroup
 
-\subsubsection{Panel d and e}\label{panel-d-and-e}
+\subsubsection{Panel d}\label{panel-d-2}
 
 \subsection{Data analysis}\label{data-analysis-9}
 
